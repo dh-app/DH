@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <color name="white">#FFFFFFFF</color>
-    <color name="black">#FF000000</color>
-    <color name="splash_bg">#FFFFFFFF</color>
-    <color name="primary_purple">#4F008C</color>
-    <color name="secondary_gold">#FFDD40</color>
-</resources>
