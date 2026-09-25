@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Identity -->
+    <string name="app_name">Nabi ur Rahmah</string>
+    <string name="app_name_honorific">Nabi ur Rahmah ﷺ</string>
+    <string name="tagline">The Prophet of Mercy</string>
+    <string name="organization_name">Dar-ul-Huda Charitable Trust, Udupi</string>
+
+    <!-- Al-Anbiyāʾ 21:107 -->
+    <string name="verse_arabic" translatable="false">وَمَآ أَرْسَلْنَٰكَ إِلَّا رَحْمَةً لِّلْعَٰلَمِينَ</string>
+    <string name="verse_translation">“And We have not sent you except as a mercy to the worlds.”</string>
+    <string name="verse_reference">Al-Anbiyāʾ 21:107</string>
+
+    <!-- Home -->
+    <string name="home_choose_language">Choose a language</string>
+    <string name="search_languages_hint">Search languages</string>
+    <string name="search_no_results_title">No matching language</string>
+    <string name="search_no_results_body">We couldn’t find “%1$s”. Try its English name.</string>
+    <string name="home_about_subtitle">Dar-ul-Huda Udupi and how to reach us</string>
+    <string name="coming_soon">Coming soon</string>
+
+    <plurals name="flyer_count">
+        <item quantity="one">%d flyer</item>
+        <item quantity="other">%d flyers</item>
+    </plurals>
+    <plurals name="language_count">
+        <item quantity="one">%d language</item>
+        <item quantity="other">%d languages</item>
+    </plurals>
+
+    <!-- Flyers -->
+    <string name="flyers_summary">%1$s · %2$s</string>
+    <string name="flyer_number">Flyer %1$d</string>
+    <string name="badge_pdf">PDF</string>
+    <string name="flyers_coming_soon_title">Flyers coming soon</string>
+    <string name="flyers_coming_soon_body">Flyers in %1$s are being prepared, in shā’ Allāh. Pull down to check for new ones.</string>
+    <string name="language_unavailable_title">Not available right now</string>
+    <string name="language_unavailable_body">Connect to the internet and try again to load these flyers.</string>
+    <string name="flyer_unavailable_body">This flyer could not be found. It may have been updated.</string>
+
+    <!-- Viewer -->
+    <string name="viewer_position">%1$d / %2$d</string>
+    <string name="share_flyer_chooser">Share flyer</string>
+    <string name="share_flyer_text">Shared from the Nabi ur Rahmah app: %1$s</string>
+
+    <!-- About -->
+    <string name="about_title">About us</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_app_body">Nabi ur Rahmah introduces the life, character and teachings of Prophet Muhammad ﷺ, the mercy to the worlds, through short flyers in many languages. Read them, save them and share them freely with family, friends and neighbours.</string>
+    <string name="about_contact">Get in touch</string>
+    <string name="about_call">Call</string>
+    <string name="about_whatsapp">WhatsApp</string>
+    <string name="about_email">Email</string>
+    <string name="about_website">Website</string>
+    <string name="about_directions">Directions</string>
+    <string name="about_follow">Follow us</string>
+    <string name="about_spread">Spread the mercy</string>
+    <string name="about_share_app">Share this app</string>
+    <string name="about_rate_app">Rate on Google Play</string>
+    <string name="about_email_subject">Nabi ur Rahmah app</string>
+    <string name="about_footer">© %1$s</string>
+    <string name="share_app_chooser">Share app</string>
+    <string name="share_app_text">Read and share flyers about Prophet Muhammad ﷺ in your language with the Nabi ur Rahmah app: %1$s</string>
+
+    <!-- Actions -->
+    <string name="action_back">Back</string>
+    <string name="action_retry">Try again</string>
+    <string name="action_clear_search">Clear search</string>
+    <string name="action_share">Share</string>
+    <string name="action_save">Save</string>
+    <string name="action_open_pdf">Open PDF</string>
+
+    <!-- Messages -->
+    <string name="error_offline_title">You’re offline</string>
+    <string name="error_offline_body">Connect to the internet to load the flyers for the first time. After that they work offline.</string>
+    <string name="error_no_app">No app on this device can open this.</string>
+    <string name="message_offline">You’re offline. Showing saved flyers.</string>
+    <string name="message_update_failed">Couldn’t check for new flyers. Please try again later.</string>
+    <string name="message_saved_image">Saved to Pictures › Nabi ur Rahmah</string>
+    <string name="message_download_failed">Download failed. Check your connection and try again.</string>
+    <string name="message_save_failed">Couldn’t save the flyer.</string>
+    <string name="message_permission_needed">Storage permission is needed to save flyers.</string>
+</resources>

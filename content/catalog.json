@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-09-25",
+  "languages": [
+    {
+      "code": "en",
+      "name": "English",
+      "nativeName": "English",
+      "rtl": false,
+      "flyers": []
+    },
+    {
+      "code": "ur",
+      "name": "Urdu",
+      "nativeName": "اردو",
+      "rtl": true,
+      "flyers": []
+    },
+    {
+      "code": "hi",
+      "name": "Hindi",
+      "nativeName": "हिन्दी",
+      "rtl": false,
+      "flyers": []
+    },
+    {
+      "code": "ar",
+      "name": "Arabic",
+      "nativeName": "العربية",
+      "rtl": true,
+      "flyers": []
+    },
+    {
+      "code": "te",
+      "name": "Telugu",
+      "nativeName": "తెలుగు",
+      "rtl": false,
+      "flyers": []
+    },
+    {
+      "code": "ta",
+      "name": "Tamil",
+      "nativeName": "தமிழ்",
+      "rtl": false,
+      "flyers": []
+    },
+    {
+      "code": "ml",
+      "name": "Malayalam",
+      "nativeName": "മലയാളം",
+      "rtl": false,
+      "flyers": []
+    },
+    {
+      "code": "kn",
+      "name": "Kannada",
+      "nativeName": "ಕನ್ನಡ",
+      "rtl": false,
+      "flyers": []
+    },
+    {
+      "code": "bn",
+      "name": "Bangla",
+      "nativeName": "বাংলা",
+      "rtl": false,
+      "flyers": []
+    },
+    {
+      "code": "gu",
+      "name": "Gujarati",
+      "nativeName": "ગુજરાતી",
+      "rtl": false,
+      "flyers": []
+    },
+    {
+      "code": "mr",
+      "name": "Marathi",
+      "nativeName": "मराठी",
+      "rtl": false,
+      "flyers": []
+    },
+    {
+      "code": "pa",
+      "name": "Punjabi",
+      "nativeName": "ਪੰਜਾਬੀ",
+      "rtl": false,
+      "flyers": []
+    },
+    {
+      "code": "or",
+      "name": "Odia",
+      "nativeName": "ଓଡ଼ିଆ",
+      "rtl": false,
+      "flyers": []
+    }
+  ],
+  "about": {
+    "organization": "Dar-ul-Huda Charitable Trust, Udupi",
+    "summary": "Dar-ul-Huda Udupi is a centre of Islamic learning dedicated to authentic knowledge and service to the community. Nabi ur Rahmah is its initiative to introduce the life, character and teachings of Prophet Muhammad ﷺ to people of every language.",
+    "phones": [
+      "+91 70224 14400",
+      "+91 89718 31905",
+      "+91 73378 14400"
+    ],
+    "whatsapp": "+91 70224 14400",
+    "email": "info@darulhudaudupi.org",
+    "website": "https://darulhudaudupi.org",
+    "address": "Dar-ul-Huda, Udupi, Karnataka, India",
+    "socials": [
+      {
+        "name": "YouTube",
+        "url": "https://www.youtube.com/@DAR-UL-HUDA,UDUPI"
+      },
+      {
+        "name": "Facebook",
+        "url": "https://www.facebook.com/DarulHudaUdupi/"
+      },
+      {
+        "name": "Instagram",
+        "url": "https://www.instagram.com/darulhudau/"
+      }
+    ]
+  }
+}

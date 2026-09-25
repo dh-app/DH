@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Splash icons are masked to a circle two-thirds of their size; inset keeps the whole emblem visible. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/logo_nabi_ur_rahmah"
+    android:inset="18%" />

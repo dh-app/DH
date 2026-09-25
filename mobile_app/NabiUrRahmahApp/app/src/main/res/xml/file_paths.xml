@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Flyers downloaded for sharing or opening; see FlyerFiles. -->
+    <cache-path name="shared" path="shared/" />
+</paths>

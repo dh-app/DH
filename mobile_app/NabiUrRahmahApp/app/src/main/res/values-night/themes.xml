@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.NabiUrRahmah" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/nur_background</item>
+        <item name="android:colorAccent">@color/nur_primary</item>
+    </style>
+</resources>
