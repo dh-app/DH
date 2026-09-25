@@ -189,6 +189,17 @@ class NabiSiteParserTest {
     }
 
     @Test
+    fun `lone resized images point at the original upload, keeping the copy as fallback`() {
+        val flyers = parser.parseFlyers(
+            page("""<p><img src="$uploads/ur-flyer-1-724x1024.jpg" width="724" height="1024" alt="Mercy"></p>"""),
+            "https://darulhudaudupi.org/nabi-ur-rahmah-urdu/".toHttpUrl(),
+        )
+
+        assertEquals("$uploads/ur-flyer-1.jpg", flyers.single().image)
+        assertEquals("$uploads/ur-flyer-1-724x1024.jpg", flyers.single().thumbnail)
+    }
+
+    @Test
     fun `flyer ids are stable across renditions`() {
         val a = NabiSiteParser.canonicalKey("$uploads/Seerah-01-300x424.jpg?ver=2")
         val b = NabiSiteParser.canonicalKey("$uploads/seerah-01-scaled.jpg")

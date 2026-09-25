@@ -205,9 +205,11 @@ class NabiSiteParser {
                 key = "https://drive.google.com/file/d/$id"
                 image = large ?: "https://drive.google.com/thumbnail?id=$id&sz=w2000"
             }
-            null -> image = large ?: return null
+            // A lone image is usually a resized copy; ask for the original upload and
+            // keep the copy as the fallback (the viewer and sharing use it if needed).
+            null -> image = large?.let(::originalUpload) ?: return null
         }
-        val thumbnail = small?.takeIf { it != image }
+        val thumbnail = (small ?: large)?.takeIf { it != image }
 
         val (width, height) = img?.let(::dimensions) ?: (null to null)
         return Flyer(
@@ -271,6 +273,10 @@ class NabiSiteParser {
     private fun looksLikeFileName(text: String): Boolean =
         (!text.contains(' ') && (text.contains('-') || text.contains('_'))) ||
             FILE_NAME_PATTERNS.any { it.containsMatchIn(text) }
+
+    /** `…/seerah-300x424.jpg` → `…/seerah.jpg`: WordPress keeps the full-size original beside its resized copies. */
+    private fun originalUpload(url: String): String =
+        if (url.contains("/wp-content/uploads/")) url.replace(Regex("-\\d{2,5}x\\d{2,5}(?=\\.[A-Za-z0-9]+(\\?|$))"), "") else url
 
     /** Stable id: the same flyer keeps its id across refreshes and renditions. */
     private fun flyerId(url: String): String {

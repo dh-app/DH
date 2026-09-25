@@ -58,14 +58,28 @@ fun Context.shareText(text: String, chooserTitle: String) =
     )
 
 fun Context.shareFile(file: LocalFile, text: String, chooserTitle: String) {
-    val send = Intent(Intent.ACTION_SEND)
+    // The clip data lets the share sheet show a preview of the file.
+    startOrToast(Intent.createChooser(sendIntent(file, text), chooserTitle))
+}
+
+private val WHATSAPP_PACKAGES = listOf("com.whatsapp", "com.whatsapp.w4b")
+
+private fun sendIntent(file: LocalFile, text: String): Intent =
+    Intent(Intent.ACTION_SEND)
         .setType(file.mimeType)
         .putExtra(Intent.EXTRA_STREAM, file.uri)
         .putExtra(Intent.EXTRA_TEXT, text)
         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    // Lets the share sheet show a preview of the flyer.
-    send.clipData = ClipData.newRawUri(null, file.uri)
-    startOrToast(Intent.createChooser(send, chooserTitle))
+        .also { it.clipData = ClipData.newRawUri(null, file.uri) }
+
+/** Straight into WhatsApp (or WhatsApp Business); the share sheet if neither is installed. */
+fun Context.shareFileToWhatsApp(file: LocalFile, text: String, chooserTitle: String) {
+    if (WHATSAPP_PACKAGES.none { tryStart(sendIntent(file, text).setPackage(it)) }) shareFile(file, text, chooserTitle)
+}
+
+fun Context.shareTextToWhatsApp(text: String, chooserTitle: String) {
+    val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
+    if (WHATSAPP_PACKAGES.none { tryStart(Intent(send).setPackage(it)) }) shareText(text, chooserTitle)
 }
 
 fun Context.viewFile(file: LocalFile) =

@@ -98,6 +98,15 @@ object KnownLanguages {
         return nativeNames.firstOrNull { (name, _) -> text.contains(name) }?.second
     }
 
+    /** The first language named anywhere in [text], e.g. a playlist title "Seerah Series – Urdu". */
+    fun mentionedIn(text: String): KnownLanguage? {
+        val words = fold(text).split(' ').filter { it.isNotEmpty() }
+        for (size in 2 downTo 1) {
+            words.windowed(size).forEach { window -> latinWords[window.joinToString(" ")]?.let { return it } }
+        }
+        return nativeNames.firstOrNull { (name, _) -> text.contains(name) }?.second
+    }
+
     /** Recognises a language from a URL slug such as `/nabi-ur-rahmah-urdu/` or `/flyers/kannada`. */
     fun matchSlug(path: String): KnownLanguage? =
         path.lowercase()

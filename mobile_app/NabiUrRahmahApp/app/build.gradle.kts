@@ -10,6 +10,7 @@ plugins {
 
 val siteUrl = providers.gradleProperty("nur.siteUrl").get()
 val youtubePlaylists = providers.gradleProperty("nur.youtubePlaylists").getOrElse("")
+fun shelf(name: String) = providers.gradleProperty("nur.shelf.$name").getOrElse("")
 
 // Release signing is read from keystore.properties (never committed) or from
 // environment variables in CI. Without either, release builds are unsigned.
@@ -34,6 +35,9 @@ android {
 
         buildConfigField("String", "SITE_URL", "\"$siteUrl\"")
         buildConfigField("String", "YOUTUBE_PLAYLISTS", "\"$youtubePlaylists\"")
+        buildConfigField("String", "SHELF_BIOGRAPHY", "\"${shelf("biography")}\"")
+        buildConfigField("String", "SHELF_TESTIMONIES", "\"${shelf("testimonies")}\"")
+        buildConfigField("String", "SHELF_BOOKS", "\"${shelf("books")}\"")
     }
 
     signingConfigs {

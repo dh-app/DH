@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.darulhuda.nabiurrahmah.platform.PdfPageDecoder
+import org.darulhuda.nabiurrahmah.platform.PdfPageFetcher
 
 class NabiApp : Application(), ImageLoaderFactory {
 
@@ -20,7 +21,7 @@ class NabiApp : Application(), ImageLoaderFactory {
 
     override fun onCreate() {
         super.onCreate()
-        container = AppContainer(this)
+        container = AppContainer(this, appScope)
         appScope.launch { container.catalogRepository.load() }
     }
 
@@ -33,7 +34,11 @@ class NabiApp : Application(), ImageLoaderFactory {
         ImageLoader.Builder(this)
             // Coil keeps its own disk cache, so give it a client without OkHttp's cache.
             .okHttpClient { container.okHttpClient.newBuilder().cache(null).build() }
-            .components { add(PdfPageDecoder.Factory()) }
+            .components {
+                add(PdfPageDecoder.Factory())
+                add(PdfPageFetcher.Factory(container.pdfDocuments))
+                add(PdfPageFetcher.PageKeyer())
+            }
             .memoryCache { MemoryCache.Builder(this).maxSizePercent(0.25).build() }
             .diskCache {
                 DiskCache.Builder()

@@ -58,7 +58,11 @@ import org.darulhuda.nabiurrahmah.R
 import org.darulhuda.nabiurrahmah.data.model.Playlist
 import org.darulhuda.nabiurrahmah.data.model.Video
 import org.darulhuda.nabiurrahmah.platform.openUrl
+import org.darulhuda.nabiurrahmah.platform.LocalPictureInPicture
 import org.darulhuda.nabiurrahmah.platform.shareText
+import org.darulhuda.nabiurrahmah.platform.shareTextToWhatsApp
+import androidx.compose.material.icons.outlined.Forum
+import androidx.compose.material3.IconButton
 import org.darulhuda.nabiurrahmah.ui.AppViewModelProvider
 import org.darulhuda.nabiurrahmah.ui.common.BackButton
 import org.darulhuda.nabiurrahmah.ui.common.ImmersiveSystemBars
@@ -78,11 +82,18 @@ fun VideoScreen(
     var fullscreen by remember { mutableStateOf<FullscreenSession?>(null) }
     val playlist = state.playlist
     val current = state.current
+    // While this screen is open, leaving the app shrinks the video into a floating window.
+    val pictureInPicture = LocalPictureInPicture.current
+    DisposableEffect(pictureInPicture) {
+        pictureInPicture.wanted = true
+        onDispose { pictureInPicture.wanted = false }
+    }
+    val compact = pictureInPicture.active
 
     Box(Modifier.fillMaxSize()) {
         Scaffold(
             topBar = {
-                TopAppBar(
+                if (!compact) TopAppBar(
                     title = {
                         Text(
                             text = playlist?.title?.ifBlank { null } ?: stringResource(R.string.videos_title),
@@ -99,6 +110,7 @@ fun VideoScreen(
                     playlist = playlist,
                     current = current,
                     contentPadding = padding,
+                    compact = compact,
                     onPlay = viewModel::play,
                     onEnded = viewModel::playNext,
                     onEnterFullscreen = { view, exit -> fullscreen = FullscreenSession(view, exit) },
@@ -130,6 +142,7 @@ private fun VideoContent(
     playlist: Playlist,
     current: Video,
     contentPadding: PaddingValues,
+    compact: Boolean,
     onPlay: (Video) -> Unit,
     onEnded: () -> Unit,
     onEnterFullscreen: (View, () -> Unit) -> Unit,
@@ -143,7 +156,7 @@ private fun VideoContent(
     Column(
         Modifier
             .fillMaxSize()
-            .padding(top = contentPadding.calculateTopPadding()),
+            .padding(top = if (compact) 0.dp else contentPadding.calculateTopPadding()),
     ) {
         if (blockedVideoId == current.id) {
             EmbedBlocked(onWatch = { context.openUrl(current.watchUrl(playlist.id)) })
@@ -157,7 +170,8 @@ private fun VideoContent(
             )
         }
 
-        LazyColumn(
+        // In picture-in-picture only the player shows; it stays the same view, so playback never restarts.
+        if (!compact) LazyColumn(
             contentPadding = PaddingValues(
                 start = 8.dp,
                 end = 8.dp,
@@ -171,18 +185,18 @@ private fun VideoContent(
                 Column(Modifier.padding(horizontal = 8.dp)) {
                     Text(current.title, style = MaterialTheme.typography.titleLarge)
                     Spacer(Modifier.height(12.dp))
+                    val shareMessage = "${current.title}\n${current.watchUrl()}"
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilledTonalButton(onClick = {
-                            context.shareText("${current.title}\n${current.watchUrl()}", shareChooser)
-                        }) {
-                            Icon(Icons.Outlined.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                        FilledTonalButton(onClick = { context.shareTextToWhatsApp(shareMessage, shareChooser) }) {
+                            Icon(Icons.Outlined.Forum, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.action_share))
+                            Text(stringResource(R.string.action_whatsapp))
                         }
-                        OutlinedButton(onClick = { context.openUrl(current.watchUrl(playlist.id)) }) {
-                            Icon(Icons.Outlined.SmartDisplay, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.action_watch_on_youtube))
+                        IconButton(onClick = { context.shareText(shareMessage, shareChooser) }) {
+                            Icon(Icons.Outlined.Share, contentDescription = stringResource(R.string.action_share))
+                        }
+                        IconButton(onClick = { context.openUrl(current.watchUrl(playlist.id)) }) {
+                            Icon(Icons.Outlined.SmartDisplay, contentDescription = stringResource(R.string.action_watch_on_youtube))
                         }
                     }
                     Spacer(Modifier.height(24.dp))

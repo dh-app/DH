@@ -24,7 +24,7 @@ import org.darulhuda.nabiurrahmah.platform.GallerySaver
 import org.darulhuda.nabiurrahmah.platform.LocalFile
 import org.darulhuda.nabiurrahmah.ui.navigation.ViewerRoute
 
-enum class ViewerAction { Share, Save, OpenPdf }
+enum class ViewerAction { Share, WhatsApp, Save }
 
 data class ViewerUiState(
     val isLoading: Boolean = true,
@@ -35,8 +35,7 @@ data class ViewerUiState(
 )
 
 sealed interface ViewerEvent {
-    data class Share(val file: LocalFile, val flyer: Flyer) : ViewerEvent
-    data class Open(val file: LocalFile) : ViewerEvent
+    data class Share(val file: LocalFile, val flyer: Flyer, val toWhatsApp: Boolean) : ViewerEvent
     data class Message(@StringRes val text: Int) : ViewerEvent
 }
 
@@ -66,22 +65,25 @@ class ViewerViewModel(
 
     val needsStoragePermission: Boolean get() = saver.needsPermission
 
-    fun share(flyer: Flyer) = perform(ViewerAction.Share) {
-        _events.send(ViewerEvent.Share(files.download(flyer.image, fileName(flyer)), flyer))
-    }
+    fun share(flyer: Flyer, toWhatsApp: Boolean = false) =
+        perform(if (toWhatsApp) ViewerAction.WhatsApp else ViewerAction.Share) {
+            _events.send(ViewerEvent.Share(bestFile(flyer), flyer, toWhatsApp))
+        }
 
     fun save(flyer: Flyer) = perform(ViewerAction.Save) {
-        val file = files.download(flyer.image, fileName(flyer))
+        val file = bestFile(flyer)
         saver.save(file)
         _events.send(ViewerEvent.Message(if (file.isPdf) R.string.message_saved_pdf else R.string.message_saved_image))
     }
 
-    fun openPdf(flyer: Flyer) {
-        val pdf = flyer.pdf ?: return
-        perform(ViewerAction.OpenPdf) {
-            _events.send(ViewerEvent.Open(files.download(pdf, fileName(flyer))))
+    /** The full-size file, or the preview if the full size isn't available on the site. */
+    private suspend fun bestFile(flyer: Flyer): LocalFile =
+        try {
+            files.download(flyer.image, fileName(flyer))
+        } catch (e: IOException) {
+            val preview = flyer.thumbnail ?: throw e
+            files.download(preview, fileName(flyer) + "-preview")
         }
-    }
 
     private fun fileName(flyer: Flyer) = "nabi-ur-rahmah-${route.languageCode}-${flyer.id}"
 

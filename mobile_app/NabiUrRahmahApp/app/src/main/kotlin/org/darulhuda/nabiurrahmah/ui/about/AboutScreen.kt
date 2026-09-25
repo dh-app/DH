@@ -33,6 +33,9 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -70,6 +73,7 @@ fun AboutScreen(
     viewModel: AboutViewModel = viewModel(factory = AppViewModelProvider.Factory),
 ) {
     val about = viewModel.about
+    val playSalawat by viewModel.playSalawat.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
@@ -150,6 +154,20 @@ fun AboutScreen(
                     }
                     ActionRow(Icons.Outlined.Star, stringResource(R.string.about_rate_app), null) {
                         context.openPlayStore()
+                    }
+                }
+            }
+
+            if (viewModel.salawatAvailable) {
+                item(key = "settings") {
+                    Section(stringResource(R.string.about_settings)) {
+                        ListItem(
+                            headlineContent = { Text(stringResource(R.string.setting_salawat)) },
+                            supportingContent = { Text(stringResource(R.string.setting_salawat_detail)) },
+                            trailingContent = { Switch(checked = playSalawat, onCheckedChange = viewModel::setPlaySalawat) },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            modifier = Modifier.clickable { viewModel.setPlaySalawat(!playSalawat) },
+                        )
                     }
                 }
             }

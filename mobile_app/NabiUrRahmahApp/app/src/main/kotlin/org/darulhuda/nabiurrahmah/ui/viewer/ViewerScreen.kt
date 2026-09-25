@@ -65,7 +65,9 @@ import org.darulhuda.nabiurrahmah.R
 import org.darulhuda.nabiurrahmah.data.model.Flyer
 import org.darulhuda.nabiurrahmah.platform.PLAY_STORE_URL
 import org.darulhuda.nabiurrahmah.platform.shareFile
-import org.darulhuda.nabiurrahmah.platform.viewFile
+import org.darulhuda.nabiurrahmah.platform.shareFileToWhatsApp
+import coil.request.ImageRequest
+import androidx.compose.material.icons.outlined.Forum
 import org.darulhuda.nabiurrahmah.ui.AppViewModelProvider
 import org.darulhuda.nabiurrahmah.ui.common.ImmersiveSystemBars
 import org.darulhuda.nabiurrahmah.ui.common.MessageState
@@ -74,6 +76,7 @@ import org.darulhuda.nabiurrahmah.ui.theme.NurTheme
 @Composable
 fun ViewerScreen(
     onBack: () -> Unit,
+    onOpenPdf: (url: String, title: String) -> Unit,
     viewModel: ViewerViewModel = viewModel(factory = AppViewModelProvider.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -85,13 +88,15 @@ fun ViewerScreen(
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
-                is ViewerEvent.Share -> context.shareFile(
-                    file = event.file,
-                    text = listOfNotNull(event.flyer.title, context.getString(R.string.share_flyer_text, PLAY_STORE_URL))
-                        .joinToString("\n\n"),
-                    chooserTitle = shareTitle,
-                )
-                is ViewerEvent.Open -> context.viewFile(event.file)
+                is ViewerEvent.Share -> {
+                    val text = listOfNotNull(event.flyer.title, context.getString(R.string.share_flyer_text, PLAY_STORE_URL))
+                        .joinToString("\n\n")
+                    if (event.toWhatsApp) {
+                        context.shareFileToWhatsApp(event.file, text, shareTitle)
+                    } else {
+                        context.shareFile(event.file, text, shareTitle)
+                    }
+                }
                 is ViewerEvent.Message -> snackbarHostState.showSnackbar(context.getString(event.text))
             }
         }
@@ -121,9 +126,10 @@ fun ViewerScreen(
         state = state,
         snackbarHostState = snackbarHostState,
         onBack = onBack,
-        onShare = viewModel::share,
+        onShare = { viewModel.share(it) },
+        onWhatsApp = { viewModel.share(it, toWhatsApp = true) },
         onSave = onSave,
-        onOpenPdf = viewModel::openPdf,
+        onOpenPdf = { flyer -> flyer.pdf?.let { onOpenPdf(it, flyer.title ?: context.getString(R.string.app_name)) } },
     )
 }
 
@@ -133,6 +139,7 @@ private fun ViewerContent(
     snackbarHostState: SnackbarHostState,
     onBack: () -> Unit,
     onShare: (Flyer) -> Unit,
+    onWhatsApp: (Flyer) -> Unit,
     onSave: (Flyer) -> Unit,
     onOpenPdf: (Flyer) -> Unit,
 ) {
@@ -156,6 +163,7 @@ private fun ViewerContent(
                 onToggleChrome = { chromeVisible = !chromeVisible },
                 onBack = onBack,
                 onShare = onShare,
+                onWhatsApp = onWhatsApp,
                 onSave = onSave,
                 onOpenPdf = onOpenPdf,
             )
@@ -202,6 +210,7 @@ private fun FlyerPager(
     onToggleChrome: () -> Unit,
     onBack: () -> Unit,
     onShare: (Flyer) -> Unit,
+    onWhatsApp: (Flyer) -> Unit,
     onSave: (Flyer) -> Unit,
     onOpenPdf: (Flyer) -> Unit,
 ) {
@@ -215,9 +224,18 @@ private fun FlyerPager(
         ) { page ->
             val flyer = flyers[page]
             val imageState = rememberZoomableImageState()
+            val context = LocalContext.current
+            // If the full-size file isn't on the site, fall back to the best preview we have.
+            var useFallback by remember(flyer.id) { mutableStateOf(false) }
+            val request = remember(flyer.id, useFallback) {
+                ImageRequest.Builder(context)
+                    .data(if (useFallback) flyer.previewUrl else flyer.image)
+                    .listener(onError = { _, _ -> if (!useFallback && flyer.thumbnail != null) useFallback = true })
+                    .build()
+            }
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 ZoomableAsyncImage(
-                    model = flyer.image,
+                    model = request,
                     contentDescription = flyer.title ?: stringResource(R.string.flyer_number, page + 1),
                     gestures = EnabledZoomGestures.ZoomAndPan,
                     state = imageState,
@@ -254,6 +272,7 @@ private fun FlyerPager(
                     flyer = current,
                     busy = busy,
                     onShare = { onShare(current) },
+                    onWhatsApp = { onWhatsApp(current) },
                     onSave = { onSave(current) },
                     onOpenPdf = { onOpenPdf(current) },
                 )
@@ -306,6 +325,7 @@ private fun ViewerActions(
     flyer: Flyer,
     busy: ViewerAction?,
     onShare: () -> Unit,
+    onWhatsApp: () -> Unit,
     onSave: () -> Unit,
     onOpenPdf: () -> Unit,
 ) {
@@ -317,14 +337,15 @@ private fun ViewerActions(
             .padding(top = 32.dp, bottom = 16.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
+        ActionButton(Icons.Outlined.Forum, stringResource(R.string.action_whatsapp), busy == ViewerAction.WhatsApp, busy == null, onWhatsApp)
         ActionButton(Icons.Outlined.Share, stringResource(R.string.action_share), busy == ViewerAction.Share, busy == null, onShare)
         ActionButton(Icons.Outlined.Download, stringResource(R.string.action_save), busy == ViewerAction.Save, busy == null, onSave)
         if (flyer.pdf != null) {
             ActionButton(
                 Icons.Outlined.PictureAsPdf,
-                stringResource(R.string.action_open_pdf),
-                busy == ViewerAction.OpenPdf,
-                busy == null,
+                stringResource(R.string.action_read_pdf),
+                false,
+                true,
                 onOpenPdf,
             )
         }

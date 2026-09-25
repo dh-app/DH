@@ -6,7 +6,8 @@
     </style>
 
     <style name="Theme.NabiUrRahmah.Starting" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@color/nur_background</item>
+        <!-- Same colour as the Durood screen that follows, so the two read as one. -->
+        <item name="windowSplashScreenBackground">@color/nur_primary</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/splash_icon</item>
         <item name="postSplashScreenTheme">@style/Theme.NabiUrRahmah</item>
     </style>
