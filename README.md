@@ -1,8 +1,8 @@
 # Nabi ur Rahmah ﷺ
 
 Android app by **Dar-ul-Huda Charitable Trust, Udupi**. It introduces the life, character and
-teachings of Prophet Muhammad ﷺ through short flyers in many languages. People can read the
-flyers, zoom into them, save them and share them.
+teachings of Prophet Muhammad ﷺ through flyers, videos and books in many languages, all free to
+read, watch, save and share.
 
 ## Repository layout
 
@@ -19,14 +19,20 @@ DH/
 
 ## The app
 
-- **Home**: the emblem and Al-Anbiyāʾ 21:107, then every language with its flyer count, with search.
-- **Flyers**: a grid of flyers for one language.
-- **Viewer**: full-screen, swipe between flyers, pinch or double-tap to zoom. Share the image
-  itself (not just a link), save it to the gallery, or open the PDF version.
-- **Videos**: the Nabi ur Rahmah YouTube playlists, played inside the app with the official
-  YouTube player. Fullscreen turns to landscape, the next video plays automatically, and a video
-  resumes where you left it. There's also a "Watch on YouTube" button.
-- **About us**: the project, Dar-ul-Huda Udupi, phone, WhatsApp, email, website, map and social links.
+Opening the app shows the Durood with the salawat recording, which fades into six tiles:
+
+| Tile | What it opens |
+|---|---|
+| **Teachings of Prophet Muhammad ﷺ**: flyers in multiple languages | Every language, then its flyers: full screen, zoom, save, share to WhatsApp |
+| **Teachings of Prophet Muhammad ﷺ**: videos in multiple languages | The YouTube playlists, played in the app, with fullscreen and a floating window when you leave |
+| **Biography of Prophet Muhammad ﷺ** | Seerah books from `library/prophetic-biography/` and IslamHouse, in every language |
+| **What they say about Prophet Muhammad ﷺ** | Books from `library/what-they-say/` |
+| **Books on Prophet Muhammad ﷺ** | Books from `library/books-on-prophet/` |
+| **Contact us · About us** | Dar-ul-Huda Udupi: phone, WhatsApp, email, website, map, social links and settings |
+
+Books open in the built-in reader. It resumes at the last page, has night mode and
+go-to-page, and zooms when you tap a page. Books can be downloaded for offline reading,
+shared to WhatsApp or anywhere else, and saved to Downloads.
 
 ### Videos come straight from YouTube
 
@@ -75,13 +81,14 @@ OkHttp · jsoup · kotlinx.serialization · Coil · Telephoto (zoom) · android-
 app/src/main/kotlin/org/darulhuda/nabiurrahmah/
 ├── data/          model, repository (offline-first), website source
 │   ├── site/      website parser, language recognition
-│   └── youtube/   playlist reader (page + RSS fallback)
-├── platform/      downloading, saving to the gallery, share / call / email intents
+│   ├── youtube/   playlist reader (page + RSS fallback)
+│   └── library/   book shelves: repository folders, releases, IslamHouse
+├── platform/      downloads, PDF rendering, salawat, picture-in-picture, share / call / email
 └── ui/
     ├── theme/     colours from the emblem, Inter + Noto Naskh Arabic
     ├── navigation/
     ├── common/    shared components
-    ├── home/ flyers/ viewer/ videos/ about/
+    ├── landing/ home/ flyers/ viewer/ videos/ library/ about/
 ```
 
 ### Build and run
@@ -90,7 +97,7 @@ Open `mobile_app/NabiUrRahmahApp` in Android Studio (latest stable) and press Ru
 
 ```bash
 cd mobile_app/NabiUrRahmahApp
-./gradlew testDebugUnitTest   # unit tests: parser, language matching, repository
+./gradlew testDebugUnitTest   # unit tests: website, YouTube and book parsing, repositories
 ./gradlew assembleDebug       # app/build/outputs/apk/debug/
 ```
 
@@ -141,6 +148,6 @@ within 12 hours, or right away when someone pulls down to refresh.
 
 - The website address is `nur.siteUrl` in `mobile_app/NabiUrRahmahApp/gradle.properties`.
 - Playlists that are always shown are listed in `nur.youtubePlaylists` in the same file.
-- Book shelf sources are `nur.shelf.*` in the same file (IslamHouse categories, web pages, GitHub releases).
+- Book shelf sources are `nur.shelf.*` in the same file (repository folders, GitHub releases, IslamHouse categories, web pages).
 - The salawat played on opening is `app/src/main/assets/salawat.mp3`. Without it, the app opens silently.
 - Contact details on the About screen are in `app/src/main/assets/about.json`.
