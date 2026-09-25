@@ -9,7 +9,6 @@ flyers, zoom into them, save them and share them.
 | Path | What it is |
 |---|---|
 | [`mobile_app/NabiUrRahmahApp`](mobile_app/NabiUrRahmahApp) | The Android app (Kotlin, Jetpack Compose) |
-| [`content/`](content) | The flyer catalogue the app downloads. Edit this to publish flyers, no app update needed |
 | [`.github/workflows`](.github/workflows) | CI: unit tests, lint and a debug APK on every push |
 
 ## The app
@@ -20,18 +19,46 @@ flyers, zoom into them, save them and share them.
   itself (not just a link), save it to the gallery, or open the PDF version.
 - **About us**: the project, Dar-ul-Huda Udupi, phone, WhatsApp, email, website, map and social links.
 
-It works offline. The last downloaded catalogue and every image already seen stay available,
-and a copy of the catalogue ships inside the APK, so the app is never empty on first launch.
+### Flyers come straight from the website
+
+The app reads [darulhudaudupi.org/nabi-ur-rahmah](https://darulhudaudupi.org/nabi-ur-rahmah/)
+and the language pages it links to. **Publishing a flyer on the website is all it takes.**
+There is nothing to upload to GitHub and no app update to release.
+
+The reader (`data/site/NabiSiteParser.kt`) doesn't depend on one exact page layout. It understands:
+- links to a page per language, labelled in English or the language's own script
+  (`Urdu`, `اردو`, `ಕನ್ನಡ`), or with the language in the URL (`/nabi-ur-rahmah-tamil/`);
+- flyers placed under a language heading, tab or accordion on the page itself;
+- flyer images (WordPress galleries, lazy-loaded images), PDF links and Google Drive links.
+
+It ignores the header, footer, menus, logos and icons, plus banners that repeat across pages.
+For each flyer it picks a small rendition for the grid and the largest one for the viewer.
+A PDF with no preview image gets its first page rendered on the phone.
+
+### Performance
+
+- **Instant start.** The last catalogue is saved on the phone and shown immediately.
+- **Progressive loading.** The language list appears as soon as the main page is read. Each
+  language's flyers fill in as its page arrives, and language pages load in parallel.
+- **Minimal data.** Pages are fetched with conditional requests, so an unchanged page costs a
+  tiny HTTP 304 and isn't parsed again. The website is read at most once every 15 minutes
+  unless you pull down to refresh.
+- **Right-sized images.** Grids load small renditions and the viewer loads large ones. Images
+  are cached in memory and on disk (512 MB), so flyers already seen work offline.
+- **Resilient.** If one language page fails, the other languages still update and that one
+  keeps its saved flyers. If the website can't be read at all, the saved flyers stay.
+
 It supports light and dark themes, right-to-left scripts, and screen readers.
 
 ### Tech
 
-Kotlin 2.3 · Jetpack Compose (Material 3) · type-safe Navigation · kotlinx.serialization ·
-OkHttp · Coil · Telephoto (zoom). minSdk 24, targetSdk 36.
+Kotlin 2.3 · Jetpack Compose (Material 3) · type-safe Navigation · Coroutines ·
+OkHttp · jsoup · kotlinx.serialization · Coil · Telephoto (zoom). minSdk 24, targetSdk 36.
 
 ```
 app/src/main/kotlin/org/darulhuda/nabiurrahmah/
-├── data/          catalogue model, parser, repository (offline-first), sources
+├── data/          model, repository (offline-first), website source
+│   └── site/      website parser, language recognition
 ├── platform/      downloading, saving to the gallery, share / call / email intents
 └── ui/
     ├── theme/     colours from the emblem, Inter + Noto Naskh Arabic
@@ -46,7 +73,7 @@ Open `mobile_app/NabiUrRahmahApp` in Android Studio (latest stable) and press Ru
 
 ```bash
 cd mobile_app/NabiUrRahmahApp
-./gradlew testDebugUnitTest   # unit tests, including validation of content/catalog.json
+./gradlew testDebugUnitTest   # unit tests: parser, language matching, repository
 ./gradlew assembleDebug       # app/build/outputs/apk/debug/
 ```
 
@@ -67,3 +94,8 @@ keyPassword=…
 Then run `./gradlew bundleRelease`. The application id stays `org.darulhuda.udupi`, so the
 Play Store listing keeps updating the existing app. Raise `versionCode` in
 `app/build.gradle.kts` for every release.
+
+### Configuration
+
+- The website address is `nur.siteUrl` in `mobile_app/NabiUrRahmahApp/gradle.properties`.
+- Contact details on the About screen are in `app/src/main/assets/about.json`.

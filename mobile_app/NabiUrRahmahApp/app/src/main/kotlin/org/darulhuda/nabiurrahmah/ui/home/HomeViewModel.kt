@@ -18,6 +18,8 @@ data class HomeUiState(
     val isRefreshing: Boolean = false,
     val query: String = "",
     val languages: List<Language> = emptyList(),
+    /** Languages whose flyers are still arriving from the website. */
+    val loadingCodes: Set<String> = emptySet(),
     val languageCount: Int = 0,
     val flyerCount: Int = 0,
 )
@@ -38,6 +40,7 @@ class HomeViewModel(repository: CatalogRepository) : ViewModel() {
                 isRefreshing = refreshing,
                 query = query,
                 languages = all.filter { it.matches(query) },
+                loadingCodes = state.loadingLanguages,
                 languageCount = all.size,
                 flyerCount = state.catalog?.flyerCount ?: 0,
             )

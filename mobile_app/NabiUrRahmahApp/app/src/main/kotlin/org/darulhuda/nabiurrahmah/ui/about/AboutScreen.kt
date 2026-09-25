@@ -36,7 +36,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,7 +47,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.darulhuda.nabiurrahmah.BuildConfig
 import org.darulhuda.nabiurrahmah.R
@@ -71,7 +69,7 @@ fun AboutScreen(
     onBack: () -> Unit,
     viewModel: AboutViewModel = viewModel(factory = AppViewModelProvider.Factory),
 ) {
-    val about by viewModel.about.collectAsStateWithLifecycle()
+    val about = viewModel.about
     val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
@@ -101,48 +99,45 @@ fun AboutScreen(
         ) {
             item(key = "app") { AppCard() }
 
-            val info = about
-            if (info != null) {
-                item(key = "organization") { OrganizationCard(info) }
+            item(key = "organization") { OrganizationCard(about) }
 
-                if (info.hasContactDetails) {
-                    item(key = "contact") {
-                        Section(stringResource(R.string.about_contact)) {
-                            info.phones.forEach { phone ->
-                                ActionRow(Icons.Outlined.Call, phone, stringResource(R.string.about_call)) {
-                                    context.dial(phone)
-                                }
+            if (about.hasContactDetails) {
+                item(key = "contact") {
+                    Section(stringResource(R.string.about_contact)) {
+                        about.phones.forEach { phone ->
+                            ActionRow(Icons.Outlined.Call, phone, stringResource(R.string.about_call)) {
+                                context.dial(phone)
                             }
-                            info.whatsapp?.let { number ->
-                                ActionRow(Icons.Outlined.Sms, stringResource(R.string.about_whatsapp), number) {
-                                    context.openWhatsApp(number)
-                                }
+                        }
+                        about.whatsapp?.let { number ->
+                            ActionRow(Icons.Outlined.Sms, stringResource(R.string.about_whatsapp), number) {
+                                context.openWhatsApp(number)
                             }
-                            info.email?.let { email ->
-                                ActionRow(Icons.Outlined.Email, email, stringResource(R.string.about_email)) {
-                                    context.sendEmail(email, emailSubject)
-                                }
+                        }
+                        about.email?.let { email ->
+                            ActionRow(Icons.Outlined.Email, email, stringResource(R.string.about_email)) {
+                                context.sendEmail(email, emailSubject)
                             }
-                            info.website?.let { site ->
-                                ActionRow(Icons.Outlined.Language, site.displayUrl(), stringResource(R.string.about_website)) {
-                                    context.openUrl(site)
-                                }
+                        }
+                        about.website?.let { site ->
+                            ActionRow(Icons.Outlined.Language, site.displayUrl(), stringResource(R.string.about_website)) {
+                                context.openUrl(site)
                             }
-                            info.address?.let { address ->
-                                ActionRow(Icons.Outlined.Place, address, stringResource(R.string.about_directions)) {
-                                    context.openMap(address, info.mapUrl)
-                                }
+                        }
+                        about.address?.let { address ->
+                            ActionRow(Icons.Outlined.Place, address, stringResource(R.string.about_directions)) {
+                                context.openMap(address, about.mapUrl)
                             }
                         }
                     }
                 }
+            }
 
-                if (info.socials.isNotEmpty()) {
-                    item(key = "social") {
-                        Section(stringResource(R.string.about_follow)) {
-                            info.socials.forEach { social ->
-                                ActionRow(Icons.Outlined.Public, social.name, null) { context.openUrl(social.url) }
-                            }
+            if (about.socials.isNotEmpty()) {
+                item(key = "social") {
+                    Section(stringResource(R.string.about_follow)) {
+                        about.socials.forEach { social ->
+                            ActionRow(Icons.Outlined.Public, social.name, null) { context.openUrl(social.url) }
                         }
                     }
                 }
@@ -163,7 +158,7 @@ fun AboutScreen(
                 Text(
                     text = stringResource(
                         R.string.about_footer,
-                        about?.organization?.takeIf { it.isNotBlank() } ?: stringResource(R.string.organization_name),
+                        about.organization.ifBlank { stringResource(R.string.organization_name) },
                     ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

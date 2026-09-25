@@ -3,16 +3,16 @@ package org.darulhuda.nabiurrahmah.data.model
 import kotlinx.serialization.Serializable
 
 /**
- * Everything the app shows, published as one JSON document (see /content/README.md).
- * Parsing is lenient: unknown fields are ignored so the format can grow without
- * breaking installed versions of the app.
+ * Everything read from the Nabi ur Rahmah website. Cached on the device as JSON, so
+ * parsing is lenient: unknown fields are ignored and missing ones take defaults,
+ * which lets the format change between app versions.
  */
 @Serializable
 data class Catalog(
     val schemaVersion: Int = 1,
-    val updatedAt: String = "",
+    /** When the whole site was last read successfully (epoch millis). */
+    val fetchedAt: Long = 0,
     val languages: List<Language> = emptyList(),
-    val about: About = About(),
 ) {
     val flyerCount: Int get() = languages.sumOf { it.flyers.size }
 
@@ -25,14 +25,18 @@ data class Language(
     val name: String,
     val nativeName: String = name,
     val rtl: Boolean = false,
+    /** The website page listing this language's flyers, when it has one. */
+    val pageUrl: String? = null,
     val flyers: List<Flyer> = emptyList(),
 )
 
 @Serializable
 data class Flyer(
     val id: String,
+    /** Full-size image shown in the viewer (for a PDF-only flyer, the PDF itself). */
     val image: String,
     val title: String? = null,
+    /** Smaller rendition for grids. */
     val thumbnail: String? = null,
     val pdf: String? = null,
     val width: Int? = null,
@@ -48,22 +52,3 @@ data class Flyer(
             null
         }
 }
-
-@Serializable
-data class About(
-    val organization: String = "",
-    val summary: String = "",
-    val phones: List<String> = emptyList(),
-    val whatsapp: String? = null,
-    val email: String? = null,
-    val website: String? = null,
-    val address: String? = null,
-    val mapUrl: String? = null,
-    val socials: List<SocialLink> = emptyList(),
-)
-
-@Serializable
-data class SocialLink(
-    val name: String,
-    val url: String,
-)

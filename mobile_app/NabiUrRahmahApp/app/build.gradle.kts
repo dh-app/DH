@@ -8,7 +8,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-val catalogUrl = providers.gradleProperty("nur.catalogUrl").get()
+val siteUrl = providers.gradleProperty("nur.siteUrl").get()
 
 // Release signing is read from keystore.properties (never committed) or from
 // environment variables in CI. Without either, release builds are unsigned.
@@ -31,7 +31,7 @@ android {
         versionCode = 4
         versionName = "2.0.0"
 
-        buildConfigField("String", "CATALOG_URL", "\"$catalogUrl\"")
+        buildConfigField("String", "SITE_URL", "\"$siteUrl\"")
     }
 
     signingConfigs {
@@ -95,38 +95,6 @@ kotlin {
     }
 }
 
-/**
- * Bundles /content/catalog.json into the APK as a fallback, so the app has
- * something to show on first launch even without a connection. The repository
- * copy stays the single source of truth.
- */
-abstract class BundleCatalogTask : DefaultTask() {
-    @get:InputFile
-    @get:PathSensitive(PathSensitivity.NONE)
-    abstract val catalog: RegularFileProperty
-
-    @get:OutputDirectory
-    abstract val outputDir: DirectoryProperty
-
-    @TaskAction
-    fun bundle() {
-        val out = outputDir.get().asFile
-        out.deleteRecursively()
-        out.mkdirs()
-        catalog.get().asFile.copyTo(out.resolve("catalog.json"), overwrite = true)
-    }
-}
-
-val bundleCatalog = tasks.register<BundleCatalogTask>("bundleCatalog") {
-    catalog.set(rootProject.layout.projectDirectory.file("../../content/catalog.json"))
-}
-
-androidComponents {
-    onVariants { variant ->
-        variant.sources.assets?.addGeneratedSourceDirectory(bundleCatalog, BundleCatalogTask::outputDir)
-    }
-}
-
 dependencies {
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
@@ -146,10 +114,10 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
+    implementation(libs.jsoup)
     implementation(libs.coil.compose)
     implementation(libs.telephoto.zoomable.image.coil)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
-    testImplementation(libs.okhttp.mockwebserver)
 }

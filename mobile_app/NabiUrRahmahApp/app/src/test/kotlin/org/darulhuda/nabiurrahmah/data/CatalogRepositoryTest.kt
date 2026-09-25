@@ -2,119 +2,99 @@ package org.darulhuda.nabiurrahmah.data
 
 import java.io.IOException
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
+import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
-import org.darulhuda.nabiurrahmah.data.source.CatalogRemoteSource
+import org.darulhuda.nabiurrahmah.data.model.Catalog
+import org.darulhuda.nabiurrahmah.data.model.Flyer
+import org.darulhuda.nabiurrahmah.data.model.Language
 import org.darulhuda.nabiurrahmah.data.source.CatalogStore
+import org.darulhuda.nabiurrahmah.data.source.WebPage
+import org.darulhuda.nabiurrahmah.data.source.WebsiteSource
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CatalogRepositoryTest {
 
-    private val parser = CatalogParser("https://example.org/catalog.json".toHttpUrl())
+    private val index = "https://site.test/nabi-ur-rahmah/".toHttpUrl()
+    private val uploads = "https://site.test/wp-content/uploads"
 
-    private fun catalogJson(updatedAt: String, vararg codes: String) =
-        """{"updatedAt":"$updatedAt","languages":[${codes.joinToString { """{"code":"$it","name":"$it"}""" }}]}"""
-
-    private class FakeStore(var cached: String? = null, val bundled: String? = null) : CatalogStore {
-        override fun readCached() = cached
-        override fun writeCached(raw: String) { cached = raw }
-        override fun readBundled() = bundled
+    private class FakeStore(var saved: String? = null) : CatalogStore {
+        override fun read() = saved
+        override fun write(raw: String) { saved = raw }
     }
 
+    /** Serves [pages] by URL; anything missing fails like a network error. */
+    private class FakeWebsite(val pages: MutableMap<String, String>) : WebsiteSource {
+        val requests = mutableListOf<String>()
+        val unchanged = mutableSetOf<String>()
+        override suspend fun fetch(url: HttpUrl): WebPage {
+            requests += url.toString()
+            val html = pages[url.toString()] ?: throw IOException("unreachable $url")
+            return WebPage(url, html, unchanged = url.toString() in unchanged)
+        }
+    }
+
+    private fun indexHtml(vararg languages: String) =
+        languages.joinToString("") { """<a href="/nabi-ur-rahmah-${it.lowercase()}/">$it</a>""" }
+
+    private fun flyersHtml(vararg names: String) =
+        names.joinToString("") { """<img src="$uploads/$it.jpg" width="600" height="848">""" }
+
+    private fun TestScope.repository(website: WebsiteSource, store: CatalogStore = FakeStore(), now: () -> Long = { 1_000_000L }) =
+        CatalogRepository(
+            indexUrl = index,
+            website = website,
+            store = store,
+            clock = now,
+            ioDispatcher = StandardTestDispatcher(testScheduler),
+            parseDispatcher = StandardTestDispatcher(testScheduler),
+        )
+
     @Test
-    fun `network copy replaces local copy and is cached`() = runTest {
-        val store = FakeStore(bundled = catalogJson("2026-01-01", "en"))
-        val remote = catalogJson("2026-02-01", "en", "ur")
-        val repo = CatalogRepository({ remote }, store, parser, StandardTestDispatcher(testScheduler))
+    fun `reads languages and their flyers from the website and saves them`() = runTest {
+        val website = FakeWebsite(
+            mutableMapOf(
+                index.toString() to indexHtml("English", "Urdu"),
+                "https://site.test/nabi-ur-rahmah-english/" to flyersHtml("en-1", "en-2"),
+                "https://site.test/nabi-ur-rahmah-urdu/" to flyersHtml("ur-1"),
+            ),
+        )
+        val store = FakeStore()
+        val repo = repository(website, store)
 
         repo.load()
 
-        val state = repo.state.value
-        assertEquals(listOf("en", "ur"), state.catalog!!.languages.map { it.code })
-        assertNull(state.error)
-        assertFalse(state.isRefreshing)
-        assertEquals(remote, store.cached)
+        val catalog = repo.state.value.catalog!!
+        assertEquals(listOf("en", "ur"), catalog.languages.map { it.code })
+        assertEquals(listOf(2, 1), catalog.languages.map { it.flyers.size })
+        assertEquals("اردو", catalog.language("ur")!!.nativeName)
+        assertTrue(catalog.language("ur")!!.rtl)
+        assertNull(repo.state.value.error)
+        assertFalse(repo.state.value.isRefreshing)
+        assertTrue(repo.state.value.loadingLanguages.isEmpty())
+        assertEquals(catalog, CatalogJson.decodeCatalog(store.saved!!))
     }
 
     @Test
-    fun `offline keeps the newest local copy and reports a network error`() = runTest {
-        val store = FakeStore(
-            cached = catalogJson("2026-03-01", "en", "ur", "hi"),
-            bundled = catalogJson("2026-01-01", "en"),
-        )
-        val repo = CatalogRepository(
-            { throw IOException("offline") },
-            store,
-            parser,
-            StandardTestDispatcher(testScheduler),
-        )
+    fun `offline start shows the saved catalogue`() = runTest {
+        val saved = Catalog(fetchedAt = 1, languages = listOf(Language("en", "English", flyers = listOf(Flyer("a", "a.jpg")))))
+        val repo = repository(FakeWebsite(mutableMapOf()), FakeStore(CatalogJson.encodeCatalog(saved)))
 
         repo.load()
 
-        val state = repo.state.value
-        assertEquals(3, state.catalog!!.languages.size)
-        assertEquals(CatalogError.Network, state.error)
-        assertFalse(state.isLoading)
+        assertEquals(saved, repo.state.value.catalog)
+        assertEquals(CatalogError.Network, repo.state.value.error)
     }
 
     @Test
-    fun `bundled copy wins when it is newer than the cache`() = runTest {
-        val store = FakeStore(
-            cached = catalogJson("2026-01-01", "en"),
-            bundled = catalogJson("2026-05-01", "en", "ar"),
-        )
-        val repo = CatalogRepository(
-            { throw IOException("offline") },
-            store,
-            parser,
-            StandardTestDispatcher(testScheduler),
-        )
-
-        repo.load()
-
-        assertEquals(listOf("en", "ar"), repo.state.value.catalog!!.languages.map { it.code })
-    }
-
-    @Test
-    fun `invalid network data keeps the current catalogue`() = runTest {
-        val store = FakeStore(bundled = catalogJson("2026-01-01", "en"))
-        val repo = CatalogRepository({ "<html>" }, store, parser, StandardTestDispatcher(testScheduler))
-
-        repo.load()
-
-        val state = repo.state.value
-        assertEquals(listOf("en"), state.catalog!!.languages.map { it.code })
-        assertEquals(CatalogError.InvalidData, state.error)
-        assertNull("broken data must never be cached", store.cached)
-    }
-
-    @Test
-    fun `corrupt cache falls back to the bundled copy`() = runTest {
-        val store = FakeStore(cached = "{not json", bundled = catalogJson("2026-01-01", "en"))
-        val repo = CatalogRepository(
-            { throw IOException("offline") },
-            store,
-            parser,
-            StandardTestDispatcher(testScheduler),
-        )
-
-        repo.load()
-
-        assertEquals(listOf("en"), repo.state.value.catalog!!.languages.map { it.code })
-    }
-
-    @Test
-    fun `nothing local and offline is an error, not endless loading`() = runTest {
-        val repo = CatalogRepository(
-            { throw IOException("offline") },
-            FakeStore(),
-            parser,
-            StandardTestDispatcher(testScheduler),
-        )
+    fun `first start offline is an error, not endless loading`() = runTest {
+        val repo = repository(FakeWebsite(mutableMapOf()))
         assertTrue(repo.state.value.isLoading)
 
         repo.load()
@@ -125,19 +105,95 @@ class CatalogRepositoryTest {
     }
 
     @Test
-    fun `successful refresh clears a previous error`() = runTest {
-        var online = false
-        val remote = CatalogRemoteSource {
-            if (!online) throw IOException("offline")
-            catalogJson("2026-02-01", "en")
-        }
-        val repo = CatalogRepository(remote, FakeStore(), parser, StandardTestDispatcher(testScheduler))
+    fun `one failing language page keeps its saved flyers and the rest update`() = runTest {
+        val saved = Catalog(
+            fetchedAt = 1,
+            languages = listOf(
+                Language("en", "English", pageUrl = "https://site.test/nabi-ur-rahmah-english/", flyers = listOf(Flyer("old", "old.jpg"))),
+                Language("ur", "Urdu", pageUrl = "https://site.test/nabi-ur-rahmah-urdu/", flyers = listOf(Flyer("saved-ur", "s.jpg"))),
+            ),
+        )
+        val website = FakeWebsite(
+            mutableMapOf(
+                index.toString() to indexHtml("English", "Urdu"),
+                "https://site.test/nabi-ur-rahmah-english/" to flyersHtml("en-new"),
+            ),
+        )
+        val repo = repository(website, FakeStore(CatalogJson.encodeCatalog(saved)))
+
+        assertEquals(CatalogError.Partial, repo.refresh())
+
+        val catalog = repo.state.value.catalog!!
+        assertEquals(listOf("en-new.jpg"), catalog.language("en")!!.flyers.map { it.image.substringAfterLast('/') })
+        assertEquals(listOf("saved-ur"), catalog.language("ur")!!.flyers.map { it.id })
+        assertEquals("a partial read is not fresh, so the next start retries", 1L, catalog.fetchedAt)
+    }
+
+    @Test
+    fun `a site with no recognisable flyers keeps the current catalogue`() = runTest {
+        val saved = Catalog(fetchedAt = 1, languages = listOf(Language("en", "English", flyers = listOf(Flyer("a", "a.jpg")))))
+        val website = FakeWebsite(mutableMapOf(index.toString() to "<p>Under maintenance</p>"))
+        val store = FakeStore(CatalogJson.encodeCatalog(saved))
+        val repo = repository(website, store)
 
         repo.load()
-        assertEquals(CatalogError.Network, repo.state.value.error)
 
-        online = true
-        assertNull(repo.refresh())
+        assertEquals(saved, repo.state.value.catalog)
+        assertEquals(CatalogError.InvalidData, repo.state.value.error)
+        assertEquals(CatalogJson.encodeCatalog(saved), store.saved)
+    }
+
+    @Test
+    fun `unchanged pages reuse saved flyers without parsing`() = runTest {
+        val pageUrl = "https://site.test/nabi-ur-rahmah-english/"
+        val saved = Catalog(fetchedAt = 1, languages = listOf(Language("en", "English", pageUrl = pageUrl, flyers = listOf(Flyer("keep", "k.jpg")))))
+        val website = FakeWebsite(mutableMapOf(index.toString() to indexHtml("English"), pageUrl to "<p>not parsed</p>"))
+        website.unchanged += pageUrl
+        val repo = repository(website, FakeStore(CatalogJson.encodeCatalog(saved)))
+
+        repo.refresh()
+
+        assertEquals(listOf("keep"), repo.state.value.catalog!!.language("en")!!.flyers.map { it.id })
+    }
+
+    @Test
+    fun `a fresh catalogue is not fetched again on start`() = runTest {
+        val saved = Catalog(fetchedAt = 1_000_000L, languages = listOf(Language("en", "English")))
+        val website = FakeWebsite(mutableMapOf())
+        val repo = repository(website, FakeStore(CatalogJson.encodeCatalog(saved)), now = { 1_000_000L + 60_000 })
+
+        repo.load()
+
+        assertTrue(website.requests.isEmpty())
         assertNull(repo.state.value.error)
+
+        repo.refresh(force = true)
+        assertEquals(listOf(index.toString()), website.requests)
+    }
+
+    @Test
+    fun `corrupt saved data is ignored`() = runTest {
+        val website = FakeWebsite(
+            mutableMapOf(
+                index.toString() to indexHtml("English"),
+                "https://site.test/nabi-ur-rahmah-english/" to flyersHtml("en-1"),
+            ),
+        )
+        val repo = repository(website, FakeStore("{broken"))
+
+        repo.load()
+
+        assertNotNull(repo.state.value.catalog)
+        assertEquals(1, repo.state.value.catalog!!.flyerCount)
+    }
+
+    @Test
+    fun `images repeated on most language pages are removed as decoration`() {
+        val banner = Flyer("banner", "banner.jpg")
+        val languages = (1..4).map { Language("l$it", "L$it", flyers = listOf(banner, Flyer("f$it", "f$it.jpg"))) }
+
+        val cleaned = CatalogRepository.removeSharedDecorations(languages)
+
+        assertTrue(cleaned.all { language -> language.flyers.none { it.id == "banner" } && language.flyers.size == 1 })
     }
 }

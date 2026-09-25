@@ -172,6 +172,7 @@ private fun HomeContent(
                     else -> items(state.languages, key = { it.code }) { language ->
                         LanguageCard(
                             language = language,
+                            loading = language.code in state.loadingCodes,
                             onClick = { onOpenLanguage(language.code) },
                             modifier = Modifier.animateItem(),
                         )
@@ -247,6 +248,7 @@ private fun LanguageSearchField(
 @Composable
 internal fun LanguageCard(
     language: Language,
+    loading: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -288,10 +290,10 @@ internal fun LanguageCard(
             )
             Spacer(Modifier.height(12.dp))
             Text(
-                text = if (count > 0) {
-                    pluralStringResource(R.plurals.flyer_count, count, count)
-                } else {
-                    stringResource(R.string.coming_soon)
+                text = when {
+                    count > 0 -> pluralStringResource(R.plurals.flyer_count, count, count)
+                    loading -> stringResource(R.string.loading_flyers)
+                    else -> stringResource(R.string.coming_soon)
                 },
                 style = MaterialTheme.typography.labelLarge,
                 color = if (count > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -359,6 +361,7 @@ private fun HomePreview() {
                     Language("en", "English", flyers = listOf(Flyer("1", "a.jpg"))),
                     Language("ur", "Urdu", "اردو", rtl = true),
                 ),
+                loadingCodes = setOf("ur"),
                 languageCount = 2,
                 flyerCount = 1,
             ),

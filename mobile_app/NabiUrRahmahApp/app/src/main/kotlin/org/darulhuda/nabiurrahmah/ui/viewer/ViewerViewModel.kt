@@ -71,8 +71,9 @@ class ViewerViewModel(
     }
 
     fun save(flyer: Flyer) = perform(ViewerAction.Save) {
-        saver.save(files.download(flyer.image, fileName(flyer)))
-        _events.send(ViewerEvent.Message(R.string.message_saved_image))
+        val file = files.download(flyer.image, fileName(flyer))
+        saver.save(file)
+        _events.send(ViewerEvent.Message(if (file.isPdf) R.string.message_saved_pdf else R.string.message_saved_image))
     }
 
     fun openPdf(flyer: Flyer) {

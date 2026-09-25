@@ -49,4 +49,5 @@ val CatalogError.messageRes: Int
     get() = when (this) {
         CatalogError.Network -> R.string.message_offline
         CatalogError.InvalidData -> R.string.message_update_failed
+        CatalogError.Partial -> R.string.message_update_partial
     }

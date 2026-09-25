@@ -29,26 +29,31 @@ class FlyerFiles(
 ) {
 
     suspend fun download(url: String, baseName: String): LocalFile = withContext(Dispatchers.IO) {
-        val extension = extensionOf(url)
         val dir = File(context.cacheDir, CACHE_DIR).apply { mkdirs() }
-        val file = File(dir, "${safeName(baseName)}.$extension")
-
-        if (!file.isFile || file.length() == 0L) {
-            val partial = File(dir, "${file.name}.part")
-            val request = Request.Builder().url(url).build()
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) throw IOException("HTTP ${response.code} for $url")
-                val body = response.body ?: throw IOException("Empty response for $url")
-                partial.outputStream().use { out -> body.byteStream().use { it.copyTo(out) } }
-            }
-            if (!partial.renameTo(file)) throw IOException("Could not store $file")
-        }
-
+        val name = safeName(baseName)
+        val file = dir.listFiles { f -> f.nameWithoutExtension == name && f.extension in KNOWN_EXTENSIONS && f.length() > 0 }
+            ?.firstOrNull()
+            ?: fetch(url, dir, name)
         LocalFile(
             file = file,
-            mimeType = mimeTypeOf(extension),
+            mimeType = mimeTypeOf(file.extension),
             uri = FileProvider.getUriForFile(context, "${context.packageName}.files", file),
         )
+    }
+
+    private fun fetch(url: String, dir: File, name: String): File {
+        val request = Request.Builder().url(url).build()
+        return client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw IOException("HTTP ${response.code} for $url")
+            val body = response.body ?: throw IOException("Empty response for $url")
+            // Links such as Google Drive's have no extension; the server says what the file is.
+            val extension = extensionOf(url) ?: extensionOfType(body.contentType()?.toString()) ?: "jpg"
+            val file = File(dir, "$name.$extension")
+            val partial = File(dir, "${file.name}.part")
+            partial.outputStream().use { out -> body.byteStream().use { it.copyTo(out) } }
+            if (!partial.renameTo(file)) throw IOException("Could not store $file")
+            file
+        }
     }
 
     private companion object {
@@ -57,14 +62,22 @@ class FlyerFiles(
 
         val KNOWN_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "gif", "pdf")
 
-        fun extensionOf(url: String): String =
+        fun extensionOf(url: String): String? =
             url.toHttpUrlOrNull()?.pathSegments?.lastOrNull()
                 ?.substringAfterLast('.', "")
                 ?.lowercase()
                 ?.takeIf { it in KNOWN_EXTENSIONS }
-                ?: "jpg"
 
-        fun mimeTypeOf(extension: String): String = when (extension) {
+        fun extensionOfType(contentType: String?): String? = when (contentType?.substringBefore(';')?.trim()?.lowercase()) {
+            "image/jpeg" -> "jpg"
+            "image/png" -> "png"
+            "image/webp" -> "webp"
+            "image/gif" -> "gif"
+            MIME_PDF -> "pdf"
+            else -> null
+        }
+
+        fun mimeTypeOf(extension: String): String = when (extension.lowercase()) {
             "png" -> "image/png"
             "webp" -> "image/webp"
             "gif" -> "image/gif"

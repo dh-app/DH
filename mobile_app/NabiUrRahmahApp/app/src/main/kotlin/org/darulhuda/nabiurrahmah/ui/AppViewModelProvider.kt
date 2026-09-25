@@ -26,7 +26,7 @@ object AppViewModelProvider {
                 saver = container.gallerySaver,
             )
         }
-        initializer { AboutViewModel(container().catalogRepository) }
+        initializer { AboutViewModel(container().about) }
     }
 
     private fun CreationExtras.container(): AppContainer =

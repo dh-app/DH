@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import org.darulhuda.nabiurrahmah.platform.PdfPageDecoder
 
 class NabiApp : Application(), ImageLoaderFactory {
 
@@ -23,19 +24,25 @@ class NabiApp : Application(), ImageLoaderFactory {
         appScope.launch { container.catalogRepository.load() }
     }
 
+    /** Checks the website for new flyers if the last check is old; cheap to call often. */
+    fun refreshIfStale() {
+        appScope.launch { container.catalogRepository.refresh(force = false) }
+    }
+
     override fun newImageLoader(): ImageLoader =
         ImageLoader.Builder(this)
             // Coil keeps its own disk cache, so give it a client without OkHttp's cache.
             .okHttpClient { container.okHttpClient.newBuilder().cache(null).build() }
+            .components { add(PdfPageDecoder.Factory()) }
             .memoryCache { MemoryCache.Builder(this).maxSizePercent(0.25).build() }
             .diskCache {
                 DiskCache.Builder()
                     .directory(cacheDir.resolve("images"))
-                    .maxSizeBytes(256L * 1024 * 1024)
+                    .maxSizeBytes(512L * 1024 * 1024)
                     .build()
             }
-            // Flyer files never change in place (a new version gets a new name),
-            // so a cached copy is always valid, even offline.
+            // Uploaded flyer files don't change in place, so a cached copy stays valid,
+            // and flyers already seen keep working offline.
             .respectCacheHeaders(false)
             .crossfade(true)
             .build()

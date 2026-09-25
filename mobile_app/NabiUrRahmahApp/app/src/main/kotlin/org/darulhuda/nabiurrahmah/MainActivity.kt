@@ -31,6 +31,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        // Coming back to the app later picks up flyers published in the meantime.
+        (application as NabiApp).refreshIfStale()
+    }
+
     private companion object {
         const val SPLASH_MAX_MS = 800L
     }

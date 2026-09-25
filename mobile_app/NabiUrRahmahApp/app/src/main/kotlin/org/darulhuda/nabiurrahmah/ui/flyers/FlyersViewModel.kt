@@ -36,8 +36,9 @@ class FlyersViewModel(
     val uiState: StateFlow<FlyersUiState> =
         combine(repository.state, userRefresh.isRefreshing) { state, refreshing ->
             val language = state.catalog?.language(languageCode)
+            val waitingForPage = language != null && language.flyers.isEmpty() && language.code in state.loadingLanguages
             FlyersUiState(
-                isLoading = state.isLoading,
+                isLoading = state.isLoading || waitingForPage,
                 language = language,
                 unavailable = !state.isLoading && language == null,
                 isRefreshing = refreshing,

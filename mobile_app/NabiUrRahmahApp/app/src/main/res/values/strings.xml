@@ -18,6 +18,7 @@
     <string name="search_no_results_body">We couldn’t find “%1$s”. Try its English name.</string>
     <string name="home_about_subtitle">Dar-ul-Huda Udupi and how to reach us</string>
     <string name="coming_soon">Coming soon</string>
+    <string name="loading_flyers">Loading…</string>
 
     <plurals name="flyer_count">
         <item quantity="one">%d flyer</item>
@@ -72,11 +73,13 @@
 
     <!-- Messages -->
     <string name="error_offline_title">You’re offline</string>
-    <string name="error_offline_body">Connect to the internet to load the flyers for the first time. After that they work offline.</string>
+    <string name="error_offline_body">Connect to the internet to load the flyers from darulhudaudupi.org. After that, flyers you have seen work offline.</string>
     <string name="error_no_app">No app on this device can open this.</string>
     <string name="message_offline">You’re offline. Showing saved flyers.</string>
-    <string name="message_update_failed">Couldn’t check for new flyers. Please try again later.</string>
+    <string name="message_update_failed">Couldn’t read the flyers from the website. Showing saved ones.</string>
+    <string name="message_update_partial">Some languages couldn’t be updated. Showing their saved flyers.</string>
     <string name="message_saved_image">Saved to Pictures › Nabi ur Rahmah</string>
+    <string name="message_saved_pdf">Saved to Download › Nabi ur Rahmah</string>
     <string name="message_download_failed">Download failed. Check your connection and try again.</string>
     <string name="message_save_failed">Couldn’t save the flyer.</string>
     <string name="message_permission_needed">Storage permission is needed to save flyers.</string>
