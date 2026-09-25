@@ -106,8 +106,25 @@ Then run `./gradlew bundleRelease`. The application id stays `org.darulhuda.udup
 Play Store listing keeps updating the existing app. Raise `versionCode` in
 `app/build.gradle.kts` for every release.
 
+### Books: adding PDFs without touching code
+
+Each book tile reads the PDFs attached to a GitHub **release** of this repository:
+
+| Tile | Release tag |
+|---|---|
+| Biography of Prophet Muhammad ﷺ | `prophetic-biography` (added to the IslamHouse books) |
+| What they say about Prophet Muhammad ﷺ | `what-they-say` |
+| Books on Prophet Muhammad ﷺ | `books-on-prophet` |
+
+To publish a book, open the release on GitHub (**Releases**, then the release, then **Edit**), drag the
+PDF in, and save. Name files `Title - Language.pdf`, for example `The Sealed Nectar - Urdu.pdf`.
+Files with the same title become one book with several languages. The app picks up
+changes within 12 hours, or right away when someone pulls down to refresh.
+
 ### Configuration
 
 - The website address is `nur.siteUrl` in `mobile_app/NabiUrRahmahApp/gradle.properties`.
 - Playlists that are always shown are listed in `nur.youtubePlaylists` in the same file.
+- Book shelf sources are `nur.shelf.*` in the same file (IslamHouse categories, web pages, GitHub releases).
+- The salawat played on opening is `app/src/main/assets/salawat.mp3`. Without it, the app opens silently.
 - Contact details on the About screen are in `app/src/main/assets/about.json`.

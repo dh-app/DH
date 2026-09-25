@@ -53,6 +53,7 @@ class HomeViewModel(
     private fun ShelfState.summary() = ShelfSummary(
         books = shelf?.books?.size ?: 0,
         languages = shelf?.books?.flatMap { it.languages }?.distinct()?.size ?: 0,
-        comingSoon = comingSoon,
+        // Nothing configured, or nothing published yet.
+        comingSoon = comingSoon || shelf?.books?.isEmpty() == true,
     )
 }

@@ -7,6 +7,12 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.longOrNull
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.darulhuda.nabiurrahmah.data.site.KnownLanguages
@@ -136,7 +142,83 @@ class WebPagePdfSource(
 }
 
 /**
+ * PDFs attached to a GitHub release, e.g. `github:dh-app/DH@prophetic-biography`.
+ * Dropping a PDF onto the release page publishes it to the app; no code change.
+ *
+ * File names carry the details: "The Sealed Nectar - Urdu.pdf" becomes the Urdu
+ * edition of "The Sealed Nectar", grouped with other files of the same title.
+ */
+class GitHubReleaseSource(
+    private val repository: String,
+    private val tag: String,
+    private val fetch: TextFetcher,
+) : BookSource {
+
+    override suspend fun books(): List<Book> {
+        val url = "https://api.github.com/repos/$repository/releases/tags/$tag".toHttpUrl()
+        // No release yet (HTTP 404) simply means nothing has been uploaded.
+        val body = fetch.get(url) ?: return emptyList()
+        val assets = try {
+            (Json.parseToJsonElement(body) as? JsonObject)?.get("assets") as? JsonArray
+        } catch (e: IllegalArgumentException) {
+            null
+        } ?: return emptyList()
+
+        val files = assets.mapNotNull { element ->
+            val asset = element as? JsonObject ?: return@mapNotNull null
+            val name = (asset["name"] as? JsonPrimitive)?.contentOrNull ?: return@mapNotNull null
+            val download = (asset["browser_download_url"] as? JsonPrimitive)?.contentOrNull ?: return@mapNotNull null
+            if (!name.endsWith(".pdf", ignoreCase = true)) return@mapNotNull null
+            val bytes = (asset["size"] as? JsonPrimitive)?.longOrNull
+            ReleaseFile(describe(name), download, bytes?.let(::formatSize))
+        }
+        return files.groupBy { it.title.lowercase() }.map { (key, editions) ->
+            Book(
+                id = "gh-$tag-${key.hashCode().toUInt().toString(36)}",
+                editions = editions.distinctBy { it.language }.map { file ->
+                    Edition(
+                        id = file.url,
+                        language = file.language,
+                        title = file.title,
+                        files = listOf(BookFile(file.url, size = file.size)),
+                    )
+                },
+            )
+        }
+    }
+
+    private class ReleaseFile(val title: String, val language: String, val url: String, val size: String?) {
+        constructor(described: Pair<String, String>, url: String, size: String?) : this(described.first, described.second, url, size)
+    }
+
+    companion object {
+        /** "The_Sealed-Nectar (Urdu).pdf" → ("The Sealed Nectar", "ur"). */
+        internal fun describe(fileName: String): Pair<String, String> {
+            val base = fileName.substringBeforeLast('.').replace(Regex("[_.]+"), " ").replace(Regex("\\s+"), " ").trim()
+            val language = KnownLanguages.mentionedIn(base)
+            val title = if (language == null) {
+                base
+            } else {
+                listOf(language.name, language.nativeName).plus(language.aliases)
+                    .fold(base) { text, name -> text.replace(Regex("(?i)[\\s(\\[-]*\\b${Regex.escape(name)}\\b[\\s)\\]]*"), " ") }
+                    .replace(Regex("\\s*[-–—]\\s*$"), "")
+                    .replace(Regex("\\s+"), " ")
+                    .trim()
+                    .ifEmpty { base }
+            }
+            return title to (language?.code ?: "en")
+        }
+
+        internal fun formatSize(bytes: Long): String = when {
+            bytes >= 1_000_000 -> "%.1f MB".format(java.util.Locale.ROOT, bytes / 1_000_000.0)
+            else -> "${(bytes / 1_000).coerceAtLeast(1)} KB"
+        }
+    }
+}
+
+/**
  * Parses a shelf's configured sources: `islamhouse:795`, `page:https://…`,
+ * `github:owner/repo@tag`,
  * separated by commas. Unknown entries are ignored.
  */
 fun bookSourcesFrom(spec: String, fetch: TextFetcher, interfaceLanguage: String = "en"): List<BookSource> =
@@ -146,6 +228,8 @@ fun bookSourcesFrom(spec: String, fetch: TextFetcher, interfaceLanguage: String 
         when (kind) {
             "islamhouse" -> value.toIntOrNull()?.let { IslamHouseCategorySource(it, fetch, interfaceLanguage) }
             "page" -> runCatching { value.toHttpUrl() }.getOrNull()?.let { WebPagePdfSource(it, fetch) }
+            "github" -> value.split('@').takeIf { it.size == 2 && it[0].count { c -> c == '/' } == 1 }
+                ?.let { (repository, tag) -> GitHubReleaseSource(repository, tag, fetch) }
             else -> null
         }
     }

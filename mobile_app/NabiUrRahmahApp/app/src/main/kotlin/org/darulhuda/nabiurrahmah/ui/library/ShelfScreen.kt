@@ -92,7 +92,7 @@ fun ShelfScreen(
                 modifier = Modifier.fillMaxSize(),
             ) {
                 when {
-                    state.comingSoon -> fullWidth("soon") {
+                    state.comingSoon || (!state.isLoading && !state.offline && state.totalBooks == 0) -> fullWidth("soon") {
                         MessageState(
                             icon = Icons.Outlined.HourglassEmpty,
                             title = stringResource(R.string.shelf_coming_soon_title),
