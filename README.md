@@ -6,10 +6,16 @@ flyers, zoom into them, save them and share them.
 
 ## Repository layout
 
-| Path | What it is |
-|---|---|
-| [`mobile_app/NabiUrRahmahApp`](mobile_app/NabiUrRahmahApp) | The Android app (Kotlin, Jetpack Compose) |
-| [`.github/workflows`](.github/workflows) | CI: unit tests, lint and a debug APK on every push |
+```
+DH/
+├── mobile_app/NabiUrRahmahApp/   the live Android app (open this folder in Android Studio)
+├── library/                      PDF books shown in the app; upload here to publish
+│   ├── prophetic-biography/
+│   ├── what-they-say/
+│   └── books-on-prophet/
+├── archive/                      earlier uploads, kept for reference; not used by the app
+└── .github/workflows/            CI: tests, lint and a debug APK on every push
+```
 
 ## The app
 
@@ -108,17 +114,18 @@ Play Store listing keeps updating the existing app. Raise `versionCode` in
 
 ### Books: adding PDFs without touching code
 
-Upload PDFs on GitHub with **Add file → Upload files** into the tile's folder on `main`:
+Upload PDFs on GitHub with **Add file → Upload files** into the tile's folder on `main`
+(see [`library/README.md`](library/README.md)):
 
 | Tile | Folder on `main` | Release tag (for files over 25 MB) |
 |---|---|---|
-| Biography of Prophet Muhammad ﷺ | `library/prophetic-biography/` (and the top folder) | `prophetic-biography` |
+| Biography of Prophet Muhammad ﷺ | `library/prophetic-biography/` | `prophetic-biography` |
 | What they say about Prophet Muhammad ﷺ | `library/what-they-say/` | `what-they-say` |
 | Books on Prophet Muhammad ﷺ | `library/books-on-prophet/` | `books-on-prophet` |
 
 The Biography tile also lists IslamHouse's Seerah category in every language.
 
-Add a `.txt` note next to the PDFs to give each book its proper title and author:
+List each book's proper title and author in the folder's `books.txt`:
 
 ```
 Book Name: Short Seerah of Prophet ﷺ

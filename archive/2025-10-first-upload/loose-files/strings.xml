@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- 🕌 App Identity -->
+  <string name="app_name">Nabi Ur Rahmah</string>
+  <string name="organization_name">Darul Huda Charitable Trust, Udupi</string>
+
+  <!-- 🌐 Website and Contact Info -->
+  <string name="website_url">https://darulhudaudupi.org/</string>
+  <string name="contact_phone">+91 70224 14400</string>
+  <string name="contact_email">info@darulhudaudupi.org</string>
+  <string name="contact_address">Darul Huda Udupi, Karnataka, India</string>
+
+  <!-- 💬 About / Description -->
+  <string name="app_description">
+        Be a part of a lasting legacy! Support the construction of the Glorious Qur’an Printing Complex in Mirzapur, Vikarabad (Hyderabad) and earn everlasting Sadaqah Jariyah rewards.
+        This app connects you with the initiatives, books, and Qur’an projects of Darul Huda Udupi — spreading the divine message for generations to come.
+    </string>
+
+  <!-- 🌟 Donation Info -->
+  <string name="donation_title">Glorious Qur’an Printing Complex</string>
+  <string name="donation_message">
+        Contribute to the construction of the Glorious Qur’an Printing Complex at Mirzapur, Vikarabad (Hyderabad).
+        ₹2,750 per sq.ft or ₹29,600 per sq.mtr.
+        Eligible for CSR and 80G tax-exemption.
+    </string>
+
+  <!-- 🏦 Bank Details -->
+  <string name="bank_name">Canara Bank</string>
+  <string name="bank_branch">Malpe Branch</string>
+  <string name="account_number">110029470220</string>
+  <string name="ifsc_code">CNRB0010133</string>
+
+  <!-- ⚠️ Notes -->
+  <string name="note_domestic">Only domestic contributions accepted.</string>
+  <string name="note_zakat">Zakat donations cannot be accepted.</string>
+
+  <!-- 📽 Video Links -->
+  <string name="intro_video">https://youtu.be/Uu5m6oPmUBA?si=75viE6-PfEjJgvfk</string>
+  <string name="project_glimpse">https://youtu.be/fvsnpHJy6CA</string>
+
+  <!-- 📱 UI Labels -->
+  <string name="menu_home">Home</string>
+  <string name="menu_library">Digital Library</string>
+  <string name="menu_nabi">Nabi Ur Rahmah</string>
+  <string name="menu_quran">Qur’an Complex</string>
+  <string name="menu_contact">Contact Us</string>
+  <string name="action_donate_now">Donate Now</string>
+  <string name="action_explore_books">Explore Books</string>
+  <string name="loading">Loading...</string>
+  <string name="error_generic">Something went wrong. Please try again later.</string>
+</resources>

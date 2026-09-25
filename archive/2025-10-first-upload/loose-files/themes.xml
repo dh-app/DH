@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- 🌙 Base Application Theme -->
+    <!-- Using a guaranteed existing AppCompat parent -->
+    <style name="Theme.NUR" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <!-- Optional bridge to Compose Material3 colors -->
+        <item name="colorPrimary">@color/primary_purple</item>
+        <item name="colorSecondary">@color/secondary_gold</item>
+    </style>
+
+    <!-- 💧 Splash Screen Theme -->
+    <style name="Theme.NUR.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/white</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.NUR</item>
+    </style>
+
+</resources>

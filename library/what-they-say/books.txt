@@ -1,0 +1,4 @@
+# One entry per book. "Book Name" must match the PDF's file name.
+#
+# Book Name: 
+# Author: 
