@@ -16,6 +16,8 @@ import androidx.navigation.compose.rememberNavController
 import org.darulhuda.nabiurrahmah.ui.about.AboutScreen
 import org.darulhuda.nabiurrahmah.ui.flyers.FlyersScreen
 import org.darulhuda.nabiurrahmah.ui.home.HomeScreen
+import org.darulhuda.nabiurrahmah.ui.videos.PlaylistScreen
+import org.darulhuda.nabiurrahmah.ui.videos.VideoScreen
 import org.darulhuda.nabiurrahmah.ui.viewer.ViewerScreen
 
 private const val DURATION = 320
@@ -52,6 +54,8 @@ fun NurNavHost(modifier: Modifier = Modifier) {
         composable<HomeRoute> {
             HomeScreen(
                 onOpenLanguage = { code -> navController.navigate(FlyersRoute(code)) },
+                onOpenPlaylist = { id -> navController.navigate(PlaylistRoute(id)) },
+                onOpenVideo = { playlistId, videoId -> navController.navigate(VideoRoute(playlistId, videoId)) },
                 onOpenAbout = dropUnlessResumed { navController.navigate(AboutRoute) },
             )
         }
@@ -66,6 +70,15 @@ fun NurNavHost(modifier: Modifier = Modifier) {
             popExitTransition = { fadeOut(tween(DURATION / 2)) },
         ) {
             ViewerScreen(onBack = navigateUp)
+        }
+        composable<PlaylistRoute> {
+            PlaylistScreen(
+                onBack = navigateUp,
+                onOpenVideo = { playlistId, videoId -> navController.navigate(VideoRoute(playlistId, videoId)) },
+            )
+        }
+        composable<VideoRoute> {
+            VideoScreen(onBack = navigateUp)
         }
         composable<AboutRoute> {
             AboutScreen(onBack = navigateUp)

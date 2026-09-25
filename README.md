@@ -17,7 +17,17 @@ flyers, zoom into them, save them and share them.
 - **Flyers**: a grid of flyers for one language.
 - **Viewer**: full-screen, swipe between flyers, pinch or double-tap to zoom. Share the image
   itself (not just a link), save it to the gallery, or open the PDF version.
+- **Videos**: the Nabi ur Rahmah YouTube playlists, played inside the app with the official
+  YouTube player. Fullscreen turns to landscape, the next video plays automatically, and a video
+  resumes where you left it. There's also a "Watch on YouTube" button.
 - **About us**: the project, Dar-ul-Huda Udupi, phone, WhatsApp, email, website, map and social links.
+
+### Videos come straight from YouTube
+
+The playlists listed in `nur.youtubePlaylists` (`gradle.properties`) are read from YouTube
+without an API key. The app uses the playlist page (up to 100 videos, with durations) and
+falls back to the RSS feed. **Any YouTube playlist linked or embedded on the Nabi ur Rahmah web
+page is added automatically**, and new videos in a playlist appear by themselves.
 
 ### Flyers come straight from the website
 
@@ -53,18 +63,19 @@ It supports light and dark themes, right-to-left scripts, and screen readers.
 ### Tech
 
 Kotlin 2.3 · Jetpack Compose (Material 3) · type-safe Navigation · Coroutines ·
-OkHttp · jsoup · kotlinx.serialization · Coil · Telephoto (zoom). minSdk 24, targetSdk 36.
+OkHttp · jsoup · kotlinx.serialization · Coil · Telephoto (zoom) · android-youtube-player. minSdk 24, targetSdk 36.
 
 ```
 app/src/main/kotlin/org/darulhuda/nabiurrahmah/
 ├── data/          model, repository (offline-first), website source
-│   └── site/      website parser, language recognition
+│   ├── site/      website parser, language recognition
+│   └── youtube/   playlist reader (page + RSS fallback)
 ├── platform/      downloading, saving to the gallery, share / call / email intents
 └── ui/
     ├── theme/     colours from the emblem, Inter + Noto Naskh Arabic
     ├── navigation/
     ├── common/    shared components
-    ├── home/ flyers/ viewer/ about/
+    ├── home/ flyers/ viewer/ videos/ about/
 ```
 
 ### Build and run
@@ -98,4 +109,5 @@ Play Store listing keeps updating the existing app. Raise `versionCode` in
 ### Configuration
 
 - The website address is `nur.siteUrl` in `mobile_app/NabiUrRahmahApp/gradle.properties`.
+- Playlists that are always shown are listed in `nur.youtubePlaylists` in the same file.
 - Contact details on the About screen are in `app/src/main/assets/about.json`.

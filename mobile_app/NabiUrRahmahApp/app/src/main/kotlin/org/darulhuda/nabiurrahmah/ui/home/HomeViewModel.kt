@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import org.darulhuda.nabiurrahmah.data.CatalogRepository
 import org.darulhuda.nabiurrahmah.data.model.Language
+import org.darulhuda.nabiurrahmah.data.model.Playlist
 import org.darulhuda.nabiurrahmah.ui.common.UserRefresh
 
 data class HomeUiState(
@@ -22,7 +23,10 @@ data class HomeUiState(
     val loadingCodes: Set<String> = emptySet(),
     val languageCount: Int = 0,
     val flyerCount: Int = 0,
-)
+    val playlists: List<Playlist> = emptyList(),
+) {
+    val videoCount: Int get() = playlists.sumOf { it.videos.size }
+}
 
 class HomeViewModel(repository: CatalogRepository) : ViewModel() {
 
@@ -35,14 +39,16 @@ class HomeViewModel(repository: CatalogRepository) : ViewModel() {
         combine(repository.state, query, userRefresh.isRefreshing) { state, query, refreshing ->
             val all = state.catalog?.languages.orEmpty()
             HomeUiState(
-                isLoading = state.isLoading,
-                loadFailed = state.catalog == null && state.error != null,
+                // Videos can arrive before flyers; keep the flyer placeholders until flyers do.
+                isLoading = state.isLoading || (all.isEmpty() && state.isRefreshing),
+                loadFailed = all.isEmpty() && !state.isRefreshing && state.error != null,
                 isRefreshing = refreshing,
                 query = query,
                 languages = all.filter { it.matches(query) },
                 loadingCodes = state.loadingLanguages,
                 languageCount = all.size,
                 flyerCount = state.catalog?.flyerCount ?: 0,
+                playlists = state.catalog?.playlists.orEmpty(),
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 

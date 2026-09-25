@@ -3,6 +3,7 @@ package org.darulhuda.nabiurrahmah.data.site
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.darulhuda.nabiurrahmah.data.model.Flyer
+import org.darulhuda.nabiurrahmah.data.youtube.YouTubeParser
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -20,6 +21,8 @@ data class SiteIndex(
     val languages: List<SiteLanguage>,
     /** Images on the index page that are not flyers (banners, decoration); ignored on language pages too. */
     val decorationKeys: Set<String>,
+    /** YouTube playlists linked or embedded on the page. */
+    val playlistIds: List<String> = emptyList(),
 )
 
 /**
@@ -91,15 +94,19 @@ class NabiSiteParser {
             }
         }
 
+        val playlistIds = root.select("a[href*=list=], iframe[src*=list=], iframe[data-src*=list=]")
+            .mapNotNull { YouTubeParser.playlistIdFrom(it.attr("href").ifBlank { it.attr("src").ifBlank { it.attr("data-src") } }) }
+            .distinct()
+
         val languages = builders.values
             .filter { it.pageUrl != null || it.flyers.isNotEmpty() }
             .map { SiteLanguage(it.language, it.pageUrl, it.flyers.values.toList()) }
 
         return if (languages.isEmpty() && unattributed.isNotEmpty()) {
             // No language structure at all: still show what is there.
-            SiteIndex(listOf(SiteLanguage(ALL_LANGUAGES, null, unattributed.values.toList())), emptySet())
+            SiteIndex(listOf(SiteLanguage(ALL_LANGUAGES, null, unattributed.values.toList())), emptySet(), playlistIds)
         } else {
-            SiteIndex(languages, unattributed.keys)
+            SiteIndex(languages, unattributed.keys, playlistIds)
         }
     }
 
@@ -348,7 +355,7 @@ class NabiSiteParser {
         )
 
         private const val NOISE =
-            "header, footer, nav, aside, script, style, template, form, iframe, " +
+            "header, footer, nav, aside, script, style, template, form, " +
                 "#masthead, #colophon, .site-header, .site-footer, .elementor-location-header, " +
                 ".elementor-location-footer, .widget-area, .sidebar, .comments-area, .sharedaddy, " +
                 ".jp-relatedposts, .screen-reader-text, .skip-link"

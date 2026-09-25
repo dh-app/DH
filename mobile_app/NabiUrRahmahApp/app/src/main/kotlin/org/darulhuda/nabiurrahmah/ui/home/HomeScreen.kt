@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -50,6 +51,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -75,10 +77,14 @@ import org.darulhuda.nabiurrahmah.ui.common.MessageState
 import org.darulhuda.nabiurrahmah.ui.common.shimmer
 import org.darulhuda.nabiurrahmah.ui.theme.NotoNaskhArabic
 import org.darulhuda.nabiurrahmah.ui.theme.NurTheme
+import org.darulhuda.nabiurrahmah.ui.videos.PlaylistCarousel
+import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(
     onOpenLanguage: (String) -> Unit,
+    onOpenPlaylist: (String) -> Unit,
+    onOpenVideo: (playlistId: String, videoId: String) -> Unit,
     onOpenAbout: () -> Unit,
     viewModel: HomeViewModel = viewModel(factory = AppViewModelProvider.Factory),
 ) {
@@ -95,6 +101,8 @@ fun HomeScreen(
         onQueryChange = viewModel::onQueryChange,
         onRefresh = viewModel::refresh,
         onOpenLanguage = onOpenLanguage,
+        onOpenPlaylist = onOpenPlaylist,
+        onOpenVideo = onOpenVideo,
         onOpenAbout = onOpenAbout,
     )
 }
@@ -107,9 +115,20 @@ private fun HomeContent(
     onQueryChange: (String) -> Unit,
     onRefresh: () -> Unit,
     onOpenLanguage: (String) -> Unit,
+    onOpenPlaylist: (String) -> Unit,
+    onOpenVideo: (playlistId: String, videoId: String) -> Unit,
     onOpenAbout: () -> Unit,
 ) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val gridState = rememberLazyGridState()
+    val scope = rememberCoroutineScope()
+    // Index of the Videos heading: hero, search and title come first, then the language items.
+    val languageItems = when {
+        state.isLoading -> PLACEHOLDER_COUNT
+        state.loadFailed || state.languages.isEmpty() -> 1
+        else -> state.languages.size
+    }
+    val videosIndex = 3 + languageItems
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -125,6 +144,7 @@ private fun HomeContent(
         ) {
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 152.dp),
+                state = gridState,
                 contentPadding = PaddingValues(
                     start = 16.dp,
                     end = 16.dp,
@@ -136,7 +156,12 @@ private fun HomeContent(
                 modifier = Modifier.fillMaxSize(),
             ) {
                 fullWidthItem("hero") {
-                    HomeHero(languageCount = state.languageCount, flyerCount = state.flyerCount)
+                    HomeHero(
+                        languageCount = state.languageCount,
+                        flyerCount = state.flyerCount,
+                        videoCount = state.videoCount,
+                        onVideosClick = { scope.launch { gridState.animateScrollToItem(videosIndex) } },
+                    )
                 }
                 fullWidthItem("search") {
                     LanguageSearchField(
@@ -153,7 +178,7 @@ private fun HomeContent(
                     )
                 }
                 when {
-                    state.isLoading -> items(6, key = { "placeholder-$it" }) { LanguageCardPlaceholder() }
+                    state.isLoading -> items(PLACEHOLDER_COUNT, key = { "placeholder-$it" }) { LanguageCardPlaceholder() }
                     state.loadFailed -> fullWidthItem("error") {
                         MessageState(
                             icon = Icons.Outlined.CloudOff,
@@ -178,6 +203,25 @@ private fun HomeContent(
                         )
                     }
                 }
+                if (state.playlists.isNotEmpty()) {
+                    fullWidthItem("videos") {
+                        Text(
+                            text = stringResource(R.string.videos_title),
+                            style = MaterialTheme.typography.titleLarge,
+                            modifier = Modifier.padding(start = 4.dp, top = 20.dp),
+                        )
+                    }
+                    state.playlists.forEach { playlist ->
+                        fullWidthItem("playlist-${playlist.id}") {
+                            PlaylistCarousel(
+                                playlist = playlist,
+                                onSeeAll = { onOpenPlaylist(playlist.id) },
+                                onOpenVideo = { video -> onOpenVideo(playlist.id, video.id) },
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
+                        }
+                    }
+                }
                 fullWidthItem("about") {
                     AboutEntryCard(onClick = onOpenAbout, modifier = Modifier.padding(top = 12.dp))
                 }
@@ -185,6 +229,8 @@ private fun HomeContent(
         }
     }
 }
+
+private const val PLACEHOLDER_COUNT = 6
 
 private fun LazyGridScope.fullWidthItem(key: String, content: @Composable () -> Unit) =
     item(key = key, span = { GridItemSpan(maxLineSpan) }) { content() }
@@ -369,6 +415,8 @@ private fun HomePreview() {
             onQueryChange = {},
             onRefresh = {},
             onOpenLanguage = {},
+            onOpenPlaylist = {},
+            onOpenVideo = { _, _ -> },
             onOpenAbout = {},
         )
     }

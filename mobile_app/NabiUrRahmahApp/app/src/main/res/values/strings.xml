@@ -44,6 +44,20 @@
     <string name="share_flyer_chooser">Share flyer</string>
     <string name="share_flyer_text">Shared from the Nabi ur Rahmah app: %1$s</string>
 
+    <!-- Videos -->
+    <string name="videos_title">Videos</string>
+    <string name="action_see_all">See all</string>
+    <string name="up_next">Up next</string>
+    <string name="now_playing">Now playing</string>
+    <string name="action_watch_on_youtube">Watch on YouTube</string>
+    <string name="share_video_chooser">Share video</string>
+    <string name="video_embed_blocked">This video can only be played on YouTube.</string>
+    <string name="playlist_unavailable_body">Connect to the internet to load these videos.</string>
+    <plurals name="video_count">
+        <item quantity="one">%d video</item>
+        <item quantity="other">%d videos</item>
+    </plurals>
+
     <!-- About -->
     <string name="about_title">About us</string>
     <string name="about_version">Version %1$s</string>

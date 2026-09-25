@@ -22,10 +22,12 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.darulhuda.nabiurrahmah.data.model.Catalog
 import org.darulhuda.nabiurrahmah.data.model.Flyer
 import org.darulhuda.nabiurrahmah.data.model.Language
+import org.darulhuda.nabiurrahmah.data.model.Playlist
 import org.darulhuda.nabiurrahmah.data.site.NabiSiteParser
 import org.darulhuda.nabiurrahmah.data.site.SiteLanguage
 import org.darulhuda.nabiurrahmah.data.source.CatalogStore
 import org.darulhuda.nabiurrahmah.data.source.WebsiteSource
+import org.darulhuda.nabiurrahmah.data.youtube.PlaylistSource
 
 data class CatalogState(
     val catalog: Catalog? = null,
@@ -64,6 +66,9 @@ class CatalogRepository(
     private val indexUrl: HttpUrl,
     private val website: WebsiteSource,
     private val store: CatalogStore,
+    private val playlists: PlaylistSource = PlaylistSource { throw IOException("No video source") },
+    /** YouTube playlists always shown; more are picked up from the website. */
+    private val configuredPlaylistIds: List<String> = emptyList(),
     private val parser: NabiSiteParser = NabiSiteParser(),
     private val clock: () -> Long = System::currentTimeMillis,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
@@ -108,25 +113,63 @@ class CatalogRepository(
             }
             _state.update { it.copy(isRefreshing = true) }
             val error = try {
-                val (catalog, failures) = readWebsite(previous)
+                val (catalog, problem) = readEverything(previous)
                 _state.update { it.copy(catalog = catalog) }
-                withContext(ioDispatcher) { store.write(CatalogJson.encodeCatalog(catalog)) }
-                if (failures > 0) CatalogError.Partial else null
+                if (catalog != null && catalog != previous) {
+                    withContext(ioDispatcher) { store.write(CatalogJson.encodeCatalog(catalog)) }
+                }
+                problem
             } catch (e: CancellationException) {
                 _state.update { it.copy(isRefreshing = false, loadingLanguages = emptySet()) }
                 throw e
-            } catch (e: IOException) {
-                CatalogError.Network
-            } catch (e: NoFlyersFoundException) {
-                CatalogError.InvalidData
             }
             _state.update { it.copy(isRefreshing = false, loadingLanguages = emptySet(), error = error) }
             error
         }
     }
 
-    /** @return the new catalogue and how many language pages failed. */
-    private suspend fun readWebsite(previous: Catalog?): Pair<Catalog, Int> = coroutineScope {
+    /**
+     * Flyers from the website and videos from YouTube, read in parallel. Videos
+     * still update when the website can't be read, and the other way round.
+     */
+    private suspend fun readEverything(previous: Catalog?): Pair<Catalog?, CatalogError?> = coroutineScope {
+        val savedPlaylists = previous?.playlists.orEmpty().associateBy { it.id }
+        val knownIds = (configuredPlaylistIds + savedPlaylists.keys).distinct()
+        val videoReads = knownIds.associateWith { id -> async { readPlaylist(id) } }.toMutableMap()
+
+        val (site, siteError) = try {
+            readWebsite(previous).let { it to (if (it.failures > 0) CatalogError.Partial else null) }
+        } catch (e: IOException) {
+            null to CatalogError.Network
+        } catch (e: NoFlyersFoundException) {
+            null to CatalogError.InvalidData
+        }
+
+        site?.playlistIds?.filter { it !in videoReads }?.forEach { id -> videoReads[id] = async { readPlaylist(id) } }
+        // Playlists removed from the website disappear; while it can't be read, keep the known ones.
+        val shownIds = if (site != null) (configuredPlaylistIds + site.playlistIds).distinct() else knownIds
+        val videos = shownIds.mapNotNull { id -> videoReads[id]?.await() ?: savedPlaylists[id] }
+
+        val base = site?.catalog ?: previous
+        val catalog = when {
+            base != null -> base.copy(playlists = videos)
+            videos.isNotEmpty() -> Catalog(playlists = videos)
+            else -> null
+        }
+        catalog to siteError
+    }
+
+    private suspend fun readPlaylist(id: String): Playlist? =
+        try {
+            playlists.playlist(id).takeIf { it.videos.isNotEmpty() }
+        } catch (e: IOException) {
+            null
+        }
+
+    private class SiteRead(val catalog: Catalog, val failures: Int, val playlistIds: List<String>)
+
+    /** Flyers from the website; the catalogue keeps the previous playlists for now. */
+    private suspend fun readWebsite(previous: Catalog?): SiteRead = coroutineScope {
         val indexPage = website.fetch(indexUrl)
         val index = withContext(parseDispatcher) { parser.parseIndex(indexPage.html, indexPage.url) }
         if (index.languages.isEmpty()) throw NoFlyersFoundException()
@@ -141,7 +184,11 @@ class CatalogRepository(
         val withPages = index.languages.filter { it.pageUrl != null }
         _state.update {
             it.copy(
-                catalog = Catalog(fetchedAt = previous?.fetchedAt ?: 0, languages = initial),
+                catalog = Catalog(
+                    fetchedAt = previous?.fetchedAt ?: 0,
+                    languages = initial,
+                    playlists = previous?.playlists.orEmpty(),
+                ),
                 loadingLanguages = withPages.map { site -> site.language.code }.toSet(),
             )
         }
@@ -176,7 +223,11 @@ class CatalogRepository(
         )
         // Only a complete read counts as fresh; otherwise try again next launch.
         val fetchedAt = if (failures == 0) clock() else previous?.fetchedAt ?: 0
-        Catalog(fetchedAt = fetchedAt, languages = languages) to failures
+        SiteRead(
+            catalog = Catalog(fetchedAt = fetchedAt, languages = languages, playlists = previous?.playlists.orEmpty()),
+            failures = failures,
+            playlistIds = index.playlistIds,
+        )
     }
 
     /** @return the page's flyers, or null if it could not be read. */
@@ -198,7 +249,7 @@ class CatalogRepository(
 
     private fun readSaved(): Catalog? =
         try {
-            store.read()?.let(CatalogJson::decodeCatalog)?.takeIf { it.languages.isNotEmpty() }
+            store.read()?.let(CatalogJson::decodeCatalog)?.takeIf { it.languages.isNotEmpty() || it.playlists.isNotEmpty() }
         } catch (e: SerializationException) {
             null
         } catch (e: IllegalArgumentException) {

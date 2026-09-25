@@ -11,6 +11,7 @@ import org.darulhuda.nabiurrahmah.data.CatalogRepository
 import org.darulhuda.nabiurrahmah.data.model.About
 import org.darulhuda.nabiurrahmah.data.source.FileCatalogStore
 import org.darulhuda.nabiurrahmah.data.source.HttpWebsiteSource
+import org.darulhuda.nabiurrahmah.data.youtube.YouTubePlaylistSource
 import org.darulhuda.nabiurrahmah.platform.FlyerFiles
 import org.darulhuda.nabiurrahmah.platform.GallerySaver
 
@@ -40,6 +41,8 @@ class AppContainer(context: Context) {
             indexUrl = BuildConfig.SITE_URL.toHttpUrl(),
             website = HttpWebsiteSource(okHttpClient),
             store = FileCatalogStore(File(appContext.filesDir, "catalog.json")),
+            playlists = YouTubePlaylistSource(okHttpClient),
+            configuredPlaylistIds = BuildConfig.YOUTUBE_PLAYLISTS.split(',').map { it.trim() }.filter { it.isNotEmpty() },
         )
     }
 

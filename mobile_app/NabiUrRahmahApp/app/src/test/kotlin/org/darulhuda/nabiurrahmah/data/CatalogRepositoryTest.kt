@@ -12,6 +12,9 @@ import org.darulhuda.nabiurrahmah.data.model.Language
 import org.darulhuda.nabiurrahmah.data.source.CatalogStore
 import org.darulhuda.nabiurrahmah.data.source.WebPage
 import org.darulhuda.nabiurrahmah.data.source.WebsiteSource
+import org.darulhuda.nabiurrahmah.data.model.Playlist
+import org.darulhuda.nabiurrahmah.data.model.Video
+import org.darulhuda.nabiurrahmah.data.youtube.PlaylistSource
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -46,11 +49,19 @@ class CatalogRepositoryTest {
     private fun flyersHtml(vararg names: String) =
         names.joinToString("") { """<img src="$uploads/$it.jpg" width="600" height="848">""" }
 
-    private fun TestScope.repository(website: WebsiteSource, store: CatalogStore = FakeStore(), now: () -> Long = { 1_000_000L }) =
+    private fun TestScope.repository(
+        website: WebsiteSource,
+        store: CatalogStore = FakeStore(),
+        now: () -> Long = { 1_000_000L },
+        playlists: PlaylistSource = PlaylistSource { throw IOException("offline") },
+        configuredPlaylists: List<String> = emptyList(),
+    ) =
         CatalogRepository(
             indexUrl = index,
             website = website,
             store = store,
+            playlists = playlists,
+            configuredPlaylistIds = configuredPlaylists,
             clock = now,
             ioDispatcher = StandardTestDispatcher(testScheduler),
             parseDispatcher = StandardTestDispatcher(testScheduler),
@@ -195,5 +206,54 @@ class CatalogRepositoryTest {
         val cleaned = CatalogRepository.removeSharedDecorations(languages)
 
         assertTrue(cleaned.all { language -> language.flyers.none { it.id == "banner" } && language.flyers.size == 1 })
+    }
+
+    private fun playlist(id: String, vararg videos: String) = Playlist(id, "Playlist $id", videos.map { Video(it, "Video $it") })
+
+    @Test
+    fun `videos load even when the website cannot be read`() = runTest {
+        val repo = repository(
+            FakeWebsite(mutableMapOf()),
+            playlists = { id -> playlist(id, "v1", "v2") },
+            configuredPlaylists = listOf("PL1"),
+        )
+
+        repo.load()
+
+        val catalog = repo.state.value.catalog!!
+        assertEquals(listOf("PL1"), catalog.playlists.map { it.id })
+        assertTrue(catalog.languages.isEmpty())
+        assertEquals(CatalogError.Network, repo.state.value.error)
+    }
+
+    @Test
+    fun `playlists linked on the website are added after the configured ones`() = runTest {
+        val website = FakeWebsite(
+            mutableMapOf(
+                index.toString() to indexHtml("English") +
+                    """<iframe src="https://www.youtube.com/embed/videoseries?list=PLfromSite123"></iframe>""",
+                "https://site.test/nabi-ur-rahmah-english/" to flyersHtml("en-1"),
+            ),
+        )
+        val repo = repository(website, playlists = { id -> playlist(id, "v-$id") }, configuredPlaylists = listOf("PL1"))
+
+        repo.load()
+
+        assertEquals(listOf("PL1", "PLfromSite123"), repo.state.value.catalog!!.playlists.map { it.id })
+    }
+
+    @Test
+    fun `a playlist that fails to load keeps its saved videos`() = runTest {
+        val saved = Catalog(playlists = listOf(playlist("PL1", "old")))
+        val repo = repository(
+            FakeWebsite(mutableMapOf()),
+            store = FakeStore(CatalogJson.encodeCatalog(saved)),
+            playlists = { throw IOException("offline") },
+            configuredPlaylists = listOf("PL1"),
+        )
+
+        repo.refresh()
+
+        assertEquals(listOf("old"), repo.state.value.catalog!!.playlists.single().videos.map { it.id })
     }
 }

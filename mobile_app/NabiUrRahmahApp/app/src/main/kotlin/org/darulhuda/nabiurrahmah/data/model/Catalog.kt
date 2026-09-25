@@ -13,6 +13,7 @@ data class Catalog(
     /** When the whole site was last read successfully (epoch millis). */
     val fetchedAt: Long = 0,
     val languages: List<Language> = emptyList(),
+    val playlists: List<Playlist> = emptyList(),
 ) {
     val flyerCount: Int get() = languages.sumOf { it.flyers.size }
 

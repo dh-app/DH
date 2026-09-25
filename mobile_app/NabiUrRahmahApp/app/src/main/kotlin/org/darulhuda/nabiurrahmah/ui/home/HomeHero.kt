@@ -3,8 +3,14 @@ package org.darulhuda.nabiurrahmah.ui.home
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Icon
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,10 +44,13 @@ import org.darulhuda.nabiurrahmah.ui.theme.NurColors
 import org.darulhuda.nabiurrahmah.ui.theme.VerseTextStyle
 
 /** The emblem, the name and the verse the project is named after (Al-Anbiyāʾ 21:107). */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun HomeHero(
     languageCount: Int,
     flyerCount: Int,
+    videoCount: Int,
+    onVideosClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -115,25 +124,37 @@ internal fun HomeHero(
             style = MaterialTheme.typography.labelMedium,
             color = NurColors.GoldSoft,
         )
-        if (languageCount > 0) {
+        if (languageCount > 0 || videoCount > 0) {
             Spacer(Modifier.height(22.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                HeroStat(pluralStringResource(R.plurals.language_count, languageCount, languageCount))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (languageCount > 0) HeroStat(pluralStringResource(R.plurals.language_count, languageCount, languageCount))
                 if (flyerCount > 0) HeroStat(pluralStringResource(R.plurals.flyer_count, flyerCount, flyerCount))
+                if (videoCount > 0) {
+                    HeroStat(pluralStringResource(R.plurals.video_count, videoCount, videoCount), onClick = onVideosClick)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun HeroStat(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelLarge,
-        color = Color.White,
+private fun HeroStat(text: String, onClick: (() -> Unit)? = null) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
+            .clip(CircleShape)
             .border(1.dp, Color.White.copy(alpha = 0.28f), CircleShape)
-            .background(Color.White.copy(alpha = 0.08f), CircleShape)
+            .background(Color.White.copy(alpha = if (onClick != null) 0.16f else 0.08f))
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(horizontal = 14.dp, vertical = 6.dp),
-    )
+    ) {
+        if (onClick != null) {
+            Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = NurColors.Gold, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(4.dp))
+        }
+        Text(text = text, style = MaterialTheme.typography.labelLarge, color = Color.White)
+    }
 }

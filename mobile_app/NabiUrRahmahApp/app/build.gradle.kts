@@ -9,6 +9,7 @@ plugins {
 }
 
 val siteUrl = providers.gradleProperty("nur.siteUrl").get()
+val youtubePlaylists = providers.gradleProperty("nur.youtubePlaylists").getOrElse("")
 
 // Release signing is read from keystore.properties (never committed) or from
 // environment variables in CI. Without either, release builds are unsigned.
@@ -32,6 +33,7 @@ android {
         versionName = "2.0.0"
 
         buildConfigField("String", "SITE_URL", "\"$siteUrl\"")
+        buildConfigField("String", "YOUTUBE_PLAYLISTS", "\"$youtubePlaylists\"")
     }
 
     signingConfigs {
@@ -117,6 +119,7 @@ dependencies {
     implementation(libs.jsoup)
     implementation(libs.coil.compose)
     implementation(libs.telephoto.zoomable.image.coil)
+    implementation(libs.youtube.player)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

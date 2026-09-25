@@ -10,6 +10,8 @@ import org.darulhuda.nabiurrahmah.NabiApp
 import org.darulhuda.nabiurrahmah.ui.about.AboutViewModel
 import org.darulhuda.nabiurrahmah.ui.flyers.FlyersViewModel
 import org.darulhuda.nabiurrahmah.ui.home.HomeViewModel
+import org.darulhuda.nabiurrahmah.ui.videos.PlaylistViewModel
+import org.darulhuda.nabiurrahmah.ui.videos.VideoViewModel
 import org.darulhuda.nabiurrahmah.ui.viewer.ViewerViewModel
 
 /** Builds every ViewModel from the app's [AppContainer]. */
@@ -27,6 +29,8 @@ object AppViewModelProvider {
             )
         }
         initializer { AboutViewModel(container().about) }
+        initializer { PlaylistViewModel(createSavedStateHandle(), container().catalogRepository) }
+        initializer { VideoViewModel(createSavedStateHandle(), container().catalogRepository) }
     }
 
     private fun CreationExtras.container(): AppContainer =

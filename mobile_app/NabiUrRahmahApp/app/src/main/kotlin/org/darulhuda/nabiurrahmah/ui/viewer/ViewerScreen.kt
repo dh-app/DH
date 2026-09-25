@@ -1,7 +1,6 @@
 package org.darulhuda.nabiurrahmah.ui.viewer
 
 import android.Manifest
-import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -39,7 +38,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,9 +55,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
@@ -72,6 +67,7 @@ import org.darulhuda.nabiurrahmah.platform.PLAY_STORE_URL
 import org.darulhuda.nabiurrahmah.platform.shareFile
 import org.darulhuda.nabiurrahmah.platform.viewFile
 import org.darulhuda.nabiurrahmah.ui.AppViewModelProvider
+import org.darulhuda.nabiurrahmah.ui.common.ImmersiveSystemBars
 import org.darulhuda.nabiurrahmah.ui.common.MessageState
 import org.darulhuda.nabiurrahmah.ui.theme.NurTheme
 
@@ -368,35 +364,5 @@ private fun ActionButton(
             color = Color.White,
             modifier = Modifier.clearAndSetSemantics { },
         )
-    }
-}
-
-/**
- * Light icons on the black viewer, and a true full-screen view when the
- * controls are hidden. Restores the previous look when leaving.
- */
-@Composable
-private fun ImmersiveSystemBars(barsVisible: Boolean) {
-    val window = LocalActivity.current?.window ?: return
-    val controller = remember(window) { WindowCompat.getInsetsController(window, window.decorView) }
-
-    DisposableEffect(controller) {
-        val lightStatus = controller.isAppearanceLightStatusBars
-        val lightNavigation = controller.isAppearanceLightNavigationBars
-        controller.isAppearanceLightStatusBars = false
-        controller.isAppearanceLightNavigationBars = false
-        controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        onDispose {
-            controller.show(WindowInsetsCompat.Type.systemBars())
-            controller.isAppearanceLightStatusBars = lightStatus
-            controller.isAppearanceLightNavigationBars = lightNavigation
-        }
-    }
-    LaunchedEffect(controller, barsVisible) {
-        if (barsVisible) {
-            controller.show(WindowInsetsCompat.Type.systemBars())
-        } else {
-            controller.hide(WindowInsetsCompat.Type.systemBars())
-        }
     }
 }
