@@ -61,4 +61,39 @@ object LanguageNames {
     }
 
     fun isRtl(code: String): Boolean = code in RTL
+
+    /**
+     * The language a title is written in, judged by its script: Urdu is told apart
+     * from Arabic by letters only Urdu uses (ی ے ں ٹ ڈ ڑ ہ گ چ پ ژ). Null for Latin text.
+     */
+    fun fromScript(text: String): String? {
+        // Honorific ligatures such as ﷺ appear in titles of every language; they don't say which.
+        val letters = text.filter { it.isLetter() && it.code !in 0xFDF0..0xFDFF }
+        if (letters.isEmpty()) return null
+        val dominant = letters.groupingBy { script(it) }.eachCount().maxByOrNull { it.value }?.key
+        if (dominant == null || dominant == "latin") return null
+        return if (dominant == "arabic") {
+            if (letters.any { it in URDU_LETTERS }) "ur" else "ar"
+        } else {
+            dominant
+        }
+    }
+
+    private const val URDU_LETTERS = "یےںٹڈڑہگچپژھۓ"
+
+    private fun script(c: Char): String = when (c.code) {
+        in 0x0600..0x06FF, in 0x0750..0x077F, in 0xFB50..0xFDFF, in 0xFE70..0xFEFF -> "arabic"
+        in 0x0900..0x097F -> "hi"
+        in 0x0980..0x09FF -> "bn"
+        in 0x0A00..0x0A7F -> "pa"
+        in 0x0A80..0x0AFF -> "gu"
+        in 0x0B00..0x0B7F -> "or"
+        in 0x0B80..0x0BFF -> "ta"
+        in 0x0C00..0x0C7F -> "te"
+        in 0x0C80..0x0CFF -> "kn"
+        in 0x0D00..0x0D7F -> "ml"
+        in 0x0400..0x04FF -> "ru"
+        in 0x4E00..0x9FFF -> "zh"
+        else -> "latin"
+    }
 }

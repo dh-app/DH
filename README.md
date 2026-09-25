@@ -108,18 +108,27 @@ Play Store listing keeps updating the existing app. Raise `versionCode` in
 
 ### Books: adding PDFs without touching code
 
-Each book tile reads the PDFs attached to a GitHub **release** of this repository:
+Upload PDFs on GitHub with **Add file → Upload files** into the tile's folder on `main`:
 
-| Tile | Release tag |
-|---|---|
-| Biography of Prophet Muhammad ﷺ | `prophetic-biography` (added to the IslamHouse books) |
-| What they say about Prophet Muhammad ﷺ | `what-they-say` |
-| Books on Prophet Muhammad ﷺ | `books-on-prophet` |
+| Tile | Folder on `main` | Release tag (for files over 25 MB) |
+|---|---|---|
+| Biography of Prophet Muhammad ﷺ | `library/prophetic-biography/` (and the top folder) | `prophetic-biography` |
+| What they say about Prophet Muhammad ﷺ | `library/what-they-say/` | `what-they-say` |
+| Books on Prophet Muhammad ﷺ | `library/books-on-prophet/` | `books-on-prophet` |
 
-To publish a book, open the release on GitHub (**Releases**, then the release, then **Edit**), drag the
-PDF in, and save. Name files `Title - Language.pdf`, for example `The Sealed Nectar - Urdu.pdf`.
-Files with the same title become one book with several languages. The app picks up
-changes within 12 hours, or right away when someone pulls down to refresh.
+The Biography tile also lists IslamHouse's Seerah category in every language.
+
+Add a `.txt` note next to the PDFs to give each book its proper title and author:
+
+```
+Book Name: Short Seerah of Prophet ﷺ
+Author: Shaikh Dr. Abu Omar Parvez Nakwa Madani
+```
+
+The **Book Name** must match the PDF's file name. The language is worked out from the title's
+script and words, so an Urdu title is shown as Urdu. GitHub's upload page accepts files up
+to 25 MB; for bigger books, attach them to the release instead. The app picks up changes
+within 12 hours, or right away when someone pulls down to refresh.
 
 ### Configuration
 

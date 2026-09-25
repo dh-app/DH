@@ -206,7 +206,7 @@ class GitHubReleaseSource(
                     .trim()
                     .ifEmpty { base }
             }
-            return title to (language?.code ?: "en")
+            return title to (language?.code ?: LanguageNames.fromScript(title) ?: "en")
         }
 
         internal fun formatSize(bytes: Long): String = when {
@@ -217,8 +217,107 @@ class GitHubReleaseSource(
 }
 
 /**
+ * PDFs in a folder of a GitHub repository, e.g. `repo:dh-app/DH@main/library/seerah`
+ * (or `repo:dh-app/DH@main` for the top folder). Uploading a PDF with GitHub's
+ * "Add files via upload" publishes it; no code change.
+ *
+ * Titles and authors come from any .txt file in the folder written as
+ * "Book Name: …" / "Author: …" lines; otherwise from the file name.
+ */
+class GitHubFolderSource(
+    private val repository: String,
+    private val ref: String,
+    private val path: String,
+    private val fetch: TextFetcher,
+) : BookSource {
+
+    override suspend fun books(): List<Book> {
+        val listing = "https://api.github.com/repos/$repository/contents/${path.trim('/')}".toHttpUrl()
+            .newBuilder().addQueryParameter("ref", ref).build()
+        val body = fetch.get(listing) ?: return emptyList()
+        val entries = try {
+            Json.parseToJsonElement(body) as? JsonArray
+        } catch (e: IllegalArgumentException) {
+            null
+        } ?: return emptyList()
+
+        class Entry(val name: String, val url: String, val size: Long?)
+        val files = entries.mapNotNull { element ->
+            val item = element as? JsonObject ?: return@mapNotNull null
+            val name = (item["name"] as? JsonPrimitive)?.contentOrNull ?: return@mapNotNull null
+            val url = (item["download_url"] as? JsonPrimitive)?.contentOrNull ?: return@mapNotNull null
+            Entry(name, url, (item["size"] as? JsonPrimitive)?.longOrNull)
+        }
+
+        val metadata = files.filter { it.name.endsWith(".txt", ignoreCase = true) }
+            .mapNotNull { note ->
+                try {
+                    fetch.get(note.url.toHttpUrl())
+                } catch (e: IOException) {
+                    null
+                }
+            }
+            .flatMap(BookMetadata::parse)
+            .associateBy { BookMetadata.key(it.title) }
+
+        return files.filter { it.name.endsWith(".pdf", ignoreCase = true) }.map { file ->
+            val (fileTitle, fileLanguage) = GitHubReleaseSource.describe(file.name)
+            val meta = metadata[BookMetadata.key(file.name.substringBeforeLast('.'))] ?: metadata[BookMetadata.key(fileTitle)]
+            val title = meta?.title ?: fileTitle
+            val language = meta?.language ?: LanguageNames.fromScript(title) ?: fileLanguage
+            Book(
+                id = "repo-${BookMetadata.key(file.name).hashCode().toUInt().toString(36)}",
+                editions = listOf(
+                    Edition(
+                        id = file.url,
+                        language = language,
+                        title = title,
+                        author = meta?.author,
+                        description = meta?.description,
+                        files = listOf(BookFile(file.url, size = file.size?.let(GitHubReleaseSource::formatSize))),
+                    ),
+                ),
+            )
+        }
+    }
+}
+
+/** "Book Name: … / Author: …" notes kept next to the PDFs. */
+internal data class BookMetadata(val title: String, val author: String?, val language: String?, val description: String?) {
+    companion object {
+        private val TITLE_KEYS = setOf("book name", "book", "title", "name")
+
+        fun parse(text: String): List<BookMetadata> {
+            val records = mutableListOf<MutableMap<String, String>>()
+            text.lineSequence().forEach { line ->
+                val key = line.substringBefore(':', "").trim().lowercase()
+                val value = line.substringAfter(':', "").trim()
+                if (key.isEmpty() || value.isEmpty()) return@forEach
+                if (key in TITLE_KEYS || records.isEmpty()) records += mutableMapOf()
+                records.last()[if (key in TITLE_KEYS) "title" else key] = value
+            }
+            return records.mapNotNull { record ->
+                val title = record["title"] ?: return@mapNotNull null
+                BookMetadata(
+                    title = title,
+                    author = record["author"] ?: record["by"] ?: record["writer"],
+                    language = (record["language"] ?: record["lang"])?.let { KnownLanguages.match(it)?.code ?: it.lowercase().take(3) },
+                    description = record["description"] ?: record["about"],
+                )
+            }
+        }
+
+        /** Titles match whatever the spacing, case or Unicode form. */
+        fun key(text: String): String =
+            java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFC)
+                .removeSuffix(".pdf").removeSuffix(".PDF")
+                .lowercase().replace(Regex("\\s+"), " ").trim()
+    }
+}
+
+/**
  * Parses a shelf's configured sources: `islamhouse:795`, `page:https://…`,
- * `github:owner/repo@tag`,
+ * `github:owner/repo@tag`, `repo:owner/repo@branch/folder`,
  * separated by commas. Unknown entries are ignored.
  */
 fun bookSourcesFrom(spec: String, fetch: TextFetcher, interfaceLanguage: String = "en"): List<BookSource> =
@@ -228,6 +327,10 @@ fun bookSourcesFrom(spec: String, fetch: TextFetcher, interfaceLanguage: String 
         when (kind) {
             "islamhouse" -> value.toIntOrNull()?.let { IslamHouseCategorySource(it, fetch, interfaceLanguage) }
             "page" -> runCatching { value.toHttpUrl() }.getOrNull()?.let { WebPagePdfSource(it, fetch) }
+            "repo" -> value.split('@', limit = 2).takeIf { it.size == 2 && it[0].count { c -> c == '/' } == 1 }
+                ?.let { (repository, location) ->
+                    GitHubFolderSource(repository, location.substringBefore('/'), location.substringAfter('/', ""), fetch)
+                }
             "github" -> value.split('@').takeIf { it.size == 2 && it[0].count { c -> c == '/' } == 1 }
                 ?.let { (repository, tag) -> GitHubReleaseSource(repository, tag, fetch) }
             else -> null
