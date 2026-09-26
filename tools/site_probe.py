@@ -1,11 +1,10 @@
 """Prints what the app's sources really return, for debugging from CI."""
-import json, urllib.request
-from collections import Counter
+import json, re, urllib.request
+from collections import Counter, defaultdict
 
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36"
-KEY = "paV29H2gm56kvLPy"
 
-def get(url, timeout=60):
+def get(url, timeout=180):
     try:
         with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": UA}), timeout=timeout) as r:
             return r.status, r.read()
@@ -14,28 +13,46 @@ def get(url, timeout=60):
     except Exception as e:  # noqa
         return None, repr(e).encode()
 
-base = f"https://api3.islamhouse.com/v3/{KEY}/main/get-category-items/795"
-for form in ["showall/showall/en", "showall/en/showall", "books/showall/en", "showall/showall/showall", "books/showall/showall", "showall/ar/en", "showall/ur/en"]:
-    s, b = get(f"{base}/{form}/1/50/json")
-    print(f"#### {form}: status {s}, {len(b)} bytes")
-    try:
-        d = json.loads(b)
-    except Exception:
-        print("   ", b[:300]); continue
-    items = d.get("data") if isinstance(d, dict) else d
-    if not isinstance(items, list):
-        print("   ", str(d)[:300]); continue
-    print("    links:", json.dumps(d.get("links"))[:400] if isinstance(d, dict) else None)
-    langs = Counter((i.get("translated_language"), i.get("source_language")) for i in items)
-    print("    items", len(items), "langs", langs.most_common(20))
-    types = Counter(i.get("type") for i in items); print("    types", types)
-    if items:
-        i = items[0]
-        print("    keys", sorted(i.keys()))
-        print("    sample", json.dumps({k: i.get(k) for k in ("id", "title", "type", "source_id", "translated_language", "source_language", "prepared_by", "api_url")}, ensure_ascii=False)[:900])
-        print("    attachment", json.dumps((i.get("attachments") or [None])[0], ensure_ascii=False)[:400])
+def base(url):
+    name = url.split("?")[0].rsplit("/", 1)[-1]
+    stem = name.rsplit(".", 1)[0]
+    stem = re.sub(r"-\d+x\d+$", "", stem)
+    stem = re.sub(r"-scaled$", "", stem)
+    return url.split("/wp-content/uploads/")[-1].rsplit("/", 1)[0] + "/" + stem.lower()
 
-print("#### available languages for the category (site languages API)")
-for u in [f"https://api3.islamhouse.com/v3/{KEY}/main/sitecontent/en/json",
-          f"https://api3.islamhouse.com/v3/{KEY}/main/get-category-languages/795/en/json"]:
-    s, b = get(u); print(s, u.split(KEY)[1], b[:600])
+def width_of(url):
+    m = re.search(r"-(\d+)x(\d+)\.\w+$", url.split("?")[0])
+    return (int(m.group(1)), int(m.group(2))) if m else None
+
+rows = []
+for q in ["darulhudaudupi.org/wp-content/uploads/2024/*", "darulhudaudupi.org/wp-content/uploads/2023/*",
+          "darulhudaudupi.org/wp-content/uploads/2025/*"]:
+    s, b = get(f"https://web.archive.org/cdx/search/cdx?url={q}&output=json&fl=original,timestamp,statuscode,mimetype,length&filter=statuscode:200&collapse=urlkey&limit=100000")
+    got = json.loads(b)[1:] if s == 200 and b.strip().startswith(b"[") else []
+    print(q, "status", s, "rows", len(got))
+    rows += got
+
+variants = defaultdict(list)
+for original, ts, status, mime, length in rows:
+    if mime.startswith("image/") or mime == "application/pdf":
+        variants[base(original)].append((width_of(original), int(length or 0), original, ts))
+
+manifest = json.load(open("library/flyers/_from-website/manifest.json"))
+flyers = [(l["code"], f) for l in manifest["languages"] for f in l.get("flyers", [])]
+best = Counter(); per_lang = defaultdict(Counter); examples = []
+for code, f in flyers:
+    vs = variants.get(base(f["image"]), [])
+    full = [v for v in vs if v[0] is None]
+    sized = sorted((v for v in vs if v[0]), key=lambda v: -v[0][0] * v[0][1])
+    if full: bucket = "original"
+    elif sized and max(sized[0][0]) >= 1000: bucket = ">=1000px"
+    elif sized and max(sized[0][0]) >= 700: bucket = "700-999px"
+    elif sized: bucket = "<700px"
+    else: bucket = "none"
+    best[bucket] += 1; per_lang[code][bucket] += 1
+    if bucket in (">=1000px", "700-999px") and len(examples) < 8: examples.append((code, sized[0]))
+print("#### best archived copy per flyer:", dict(best))
+for code, c in per_lang.items(): print("   ", code, dict(c))
+for e in examples: print("   example", e)
+sizes = Counter(v[0] for vs in variants.values() for v in vs if v[0])
+print("#### most common archived sizes:", sizes.most_common(25))
