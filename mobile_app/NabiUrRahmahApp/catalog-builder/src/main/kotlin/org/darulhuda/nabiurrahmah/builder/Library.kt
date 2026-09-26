@@ -46,7 +46,14 @@ fun readUploadedFlyers(layout: LibraryLayout): List<Language> {
             println("  ! skipped folder '${folder.name}': not a recognised language name")
         }
         val files = folder.listFiles { f -> f.isFile && f.extension.lowercase() in FLYER_EXTENSIONS }.orEmpty().sortedBy { it.name.lowercase() }
-        val flyers = files.map { file -> publish(layout, file, File(layout.derived, folder.name), title = titleFrom(file.name)) }
+        val derived = File(layout.derived, folder.name)
+        val flyers = files.flatMap { file ->
+            if (file.extension.equals("pdf", ignoreCase = true)) {
+                pdfFlyers(layout, file, derived)
+            } else {
+                listOf(publish(layout, file, derived, title = titleFrom(file.name)))
+            }
+        }
         Language(
             code = code,
             name = known?.name ?: LanguageNames.english(code),
@@ -57,10 +64,32 @@ fun readUploadedFlyers(layout: LibraryLayout): List<Language> {
     }.filter { it.flyers.isNotEmpty() }
 }
 
+/**
+ * One flyer per page of an uploaded PDF, so each page can be viewed, saved and
+ * shared on its own. A PDF that can't be read is offered whole instead.
+ */
+private fun pdfFlyers(layout: LibraryLayout, pdf: File, derivedDir: File): List<Flyer> {
+    val title = titleFrom(pdf.name)
+    val pages = try {
+        PdfPages.render(pdf, derivedDir)
+    } catch (e: Exception) {
+        println("  ! could not read ${pdf.name}: ${e.message}")
+        return listOf(publish(layout, pdf, derivedDir, title))
+    }
+    val baseId = uploadId(pdf)
+    return pages.mapIndexed { index, page ->
+        val pageTitle = title?.let { if (pages.size > 1) "$it · ${index + 1}" else it }
+        publish(layout, page, derivedDir, pageTitle, id = "$baseId-p${index + 1}")
+    }
+}
+
+private fun uploadId(file: File): String =
+    "up-" + NabiSiteParser.canonicalKey(file.path).hashCode().toUInt().toString(36)
+
 /** A published flyer from a local file: display copy, preview and size. */
 fun publish(layout: LibraryLayout, file: File, derivedDir: File, title: String?, id: String? = null): Flyer {
     val baseName = file.nameWithoutExtension
-    val flyerId = id ?: "up-" + NabiSiteParser.canonicalKey(file.path).hashCode().toUInt().toString(36)
+    val flyerId = id ?: uploadId(file)
     if (file.extension.equals("pdf", ignoreCase = true)) {
         val url = layout.url(file)
         return Flyer(id = flyerId, image = url, pdf = url, title = title)

@@ -81,7 +81,7 @@ object Images {
         return out
     }
 
-    private fun writeJpeg(image: BufferedImage, file: File, quality: Float) {
+    internal fun writeJpeg(image: BufferedImage, file: File, quality: Float) {
         val writer = ImageIO.getImageWritersByFormatName("jpeg").next()
         val params = writer.defaultWriteParam.apply {
             compressionMode = ImageWriteParam.MODE_EXPLICIT

@@ -26,6 +26,7 @@ java {
 dependencies {
     implementation(libs.okhttp)
     implementation(libs.jsoup)
+    implementation(libs.pdfbox)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)
     testImplementation(libs.junit)

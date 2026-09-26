@@ -105,7 +105,17 @@ fun main(args: Array<String>) = runBlocking<Unit>(Dispatchers.Default) {
         report.append("- YouTube: ${playlists.size} playlists, ${playlists.sumOf { it.videos.size }} videos\n")
     }
 
-    val catalog = Catalog(languages = merge(websiteLanguages, uploaded), playlists = playlists)
+    // Phones only get flyers held in this repository; ones still waiting for the website are left out.
+    val available = websiteLanguages.map { language -> language.copy(flyers = language.flyers.filter { layout.isPublished(it.image) }) }
+    val waiting = websiteLanguages.sumOf { it.flyers.size } - available.sumOf { it.flyers.size }
+    if (websiteLanguages.isNotEmpty()) {
+        report.append("- Website flyers in full size: ${available.sumOf { it.flyers.size }}")
+            .append(if (waiting > 0) "; **$waiting waiting** for the website to come back (or for an upload)\n" else "\n")
+    }
+    val catalog = Catalog(
+        languages = merge(available, uploaded).filter { it.flyers.isNotEmpty() },
+        playlists = playlists,
+    )
     report.append("\n| Language | Flyers |\n|---|---|\n")
     catalog.languages.forEach { report.append("| ${it.name} (${it.nativeName}) | ${it.flyers.size} |\n") }
 
@@ -158,12 +168,10 @@ private suspend fun mirrorFlyer(flyer: Flyer, dir: File, layout: LibraryLayout, 
             flyer.copy(pdf = pdfUrl)
         }
     }
+    // Only the full-size image will do: a small preview is unreadable once zoomed or shared.
+    // Until it can be fetched the flyer stays unpublished, and is tried again on the next run.
     val original = File(dir, "${flyer.id}.${extension(flyer.image)}")
-    if (!downloader.download(flyer.image, original)) {
-        // Fall back to the preview if the full size was never online.
-        val preview = flyer.thumbnail ?: return flyer
-        if (!downloader.download(preview, original)) return flyer
-    }
+    if (!downloader.download(flyer.image, original)) return flyer
     return publish(layout, original, dir, flyer.title, flyer.id)
 }
 

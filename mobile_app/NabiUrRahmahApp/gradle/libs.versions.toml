@@ -13,6 +13,7 @@ coil = "2.7.0"
 telephoto = "0.18.0"
 okhttp = "4.12.0"
 jsoup = "1.18.3"
+pdfbox = "3.0.8"
 youtubePlayer = "13.0.0"
 junit = "4.13.2"
 
@@ -34,6 +35,7 @@ coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil" }
 telephoto-zoomable-image-coil = { module = "me.saket.telephoto:zoomable-image-coil", version.ref = "telephoto" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
+pdfbox = { module = "org.apache.pdfbox:pdfbox", version.ref = "pdfbox" }
 youtube-player = { module = "com.pierfrancescosoffritti.androidyoutubeplayer:core", version.ref = "youtubePlayer" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }

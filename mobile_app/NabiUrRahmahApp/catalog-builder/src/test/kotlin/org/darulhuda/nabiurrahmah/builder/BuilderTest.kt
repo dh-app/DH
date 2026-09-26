@@ -10,6 +10,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.apache.pdfbox.pdmodel.PDDocument
+import org.apache.pdfbox.pdmodel.PDPage
+import org.apache.pdfbox.pdmodel.PDPageContentStream
+import org.apache.pdfbox.pdmodel.common.PDRectangle
 import org.junit.Test
 
 class BuilderTest {
@@ -67,6 +71,36 @@ class BuilderTest {
 
         assertEquals(listOf("en", "ur", "ta"), merged.map { it.code })
         assertEquals(listOf("u1"), merged[1].flyers.map { it.id })
+    }
+
+    @Test
+    fun `an uploaded PDF becomes one sharp flyer per page, rendered once`() {
+        val pdf = File(root, "flyers/Kannada/Nabi ur Rahmah Kannada.pdf").apply { parentFile.mkdirs() }
+        PDDocument().use { document ->
+            repeat(3) {
+                val page = PDPage(PDRectangle.A4)
+                document.addPage(page)
+                PDPageContentStream(document, page).use { content ->
+                    content.addRect(50f, 50f, 200f, 300f)
+                    content.fill()
+                }
+            }
+            document.save(pdf)
+        }
+
+        val kannada = readUploadedFlyers(layout).single()
+        val again = readUploadedFlyers(layout).single()
+
+        assertEquals("kn", kannada.code)
+        assertEquals(3, kannada.flyers.size)
+        assertEquals(listOf("Nabi ur Rahmah · 1", "Nabi ur Rahmah · 2", "Nabi ur Rahmah · 3"), kannada.flyers.map { it.title })
+        val first = kannada.flyers.first()
+        assertNull(first.pdf)
+        assertTrue(first.image, first.image.contains("/flyers/_generated/Kannada/"))
+        assertEquals(Images.MAX_SIDE, maxOf(first.width!!, first.height!!))
+        assertEquals(PDRectangle.A4.width / PDRectangle.A4.height, first.aspectRatio!!, 0.002f)
+        assertEquals(kannada, again)
+        assertEquals(kannada.flyers.map { it.id }.toSet().size, 3)
     }
 
     @Test
