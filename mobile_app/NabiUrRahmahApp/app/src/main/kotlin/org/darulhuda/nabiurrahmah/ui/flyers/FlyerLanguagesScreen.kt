@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.HourglassTop
 import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -106,6 +107,13 @@ fun FlyerLanguagesScreen(
                             title = stringResource(R.string.error_offline_title),
                             body = stringResource(R.string.error_offline_body),
                             action = { FilledTonalButton(onClick = viewModel::refresh) { Text(stringResource(R.string.action_retry)) } },
+                        )
+                    }
+                    state.nothingPublished -> fullWidthItem("coming") {
+                        MessageState(
+                            icon = Icons.Outlined.HourglassTop,
+                            title = stringResource(R.string.flyers_coming_title),
+                            body = stringResource(R.string.flyers_coming_body),
                         )
                     }
                     state.languages.isEmpty() -> fullWidthItem("empty") {

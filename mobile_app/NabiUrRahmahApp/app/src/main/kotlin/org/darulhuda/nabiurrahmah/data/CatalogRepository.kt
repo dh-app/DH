@@ -153,9 +153,10 @@ class CatalogRepository(
             try {
                 readWebsite(previous).let { it to (if (it.failures > 0) CatalogError.Partial else null) }
             } catch (e: IOException) {
-                null to CatalogError.Network
+                // With the published catalogue in hand this isn't "offline": its flyers just aren't ready yet.
+                null to (if (published != null) null else CatalogError.Network)
             } catch (e: NoFlyersFoundException) {
-                null to CatalogError.InvalidData
+                null to (if (published != null) null else CatalogError.InvalidData)
             }
         }
 

@@ -198,6 +198,15 @@ private fun BookCardItem(card: BookCard, onClick: () -> Unit, modifier: Modifier
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary,
         )
+        card.book.source?.let { source ->
+            Text(
+                text = stringResource(R.string.book_source, source.name),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 

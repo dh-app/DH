@@ -22,7 +22,10 @@ data class FlyerLanguagesUiState(
     val loadingCodes: Set<String> = emptySet(),
     val languageCount: Int = 0,
     val flyerCount: Int = 0,
-)
+) {
+    /** Loaded fine, but no flyers have been published yet. */
+    val nothingPublished: Boolean get() = !isLoading && !loadFailed && languageCount == 0
+}
 
 class FlyerLanguagesViewModel(repository: CatalogRepository) : ViewModel() {
 

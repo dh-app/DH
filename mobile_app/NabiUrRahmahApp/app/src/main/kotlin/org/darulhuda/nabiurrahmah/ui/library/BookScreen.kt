@@ -59,6 +59,13 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.darulhuda.nabiurrahmah.R
+import org.darulhuda.nabiurrahmah.platform.openUrl
+import org.darulhuda.nabiurrahmah.data.library.BookOrigin
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.draw.clip
 import org.darulhuda.nabiurrahmah.data.library.Book
 import org.darulhuda.nabiurrahmah.data.library.Edition
 import org.darulhuda.nabiurrahmah.data.library.LanguageNames
@@ -173,6 +180,7 @@ private fun BookHeader(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                     )
                 }
+                book.source?.let { source -> SourceCredit(source) }
             }
         }
         Spacer(Modifier.height(20.dp))
@@ -203,6 +211,30 @@ private fun BookHeader(
             }
         }
     }
+}
+
+/** "Source: www.islamhouse.com", opening the site when tapped. */
+@Composable
+private fun SourceCredit(source: BookOrigin) {
+    val context = LocalContext.current
+    val label = stringResource(R.string.book_source, source.name)
+    Text(
+        text = buildAnnotatedString {
+            val prefix = label.substringBefore(source.name)
+            append(prefix)
+            withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary, textDecoration = TextDecoration.Underline)) {
+                append(source.name)
+            }
+            append(label.substringAfter(source.name, ""))
+        },
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .padding(top = 6.dp)
+            .clip(MaterialTheme.shapes.extraSmall)
+            .clickable(onClickLabel = source.name) { context.openUrl(source.url) }
+            .padding(vertical = 6.dp),
+    )
 }
 
 @Composable

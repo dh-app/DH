@@ -8,6 +8,8 @@ import kotlinx.serialization.Serializable
 data class Book(
     val id: String,
     val editions: List<Edition>,
+    /** Where the book comes from, credited wherever it is shown. Null for our own uploads. */
+    val source: BookOrigin? = null,
 ) {
     val languages: List<String> get() = editions.map { it.language }.distinct()
 
@@ -16,6 +18,13 @@ data class Book(
         preferredLanguages.firstNotNullOfOrNull { lang -> editions.firstOrNull { it.language == lang } }
             ?: editions.firstOrNull { it.language == "en" }
             ?: editions.first()
+}
+
+@Serializable
+data class BookOrigin(val name: String, val url: String) {
+    companion object {
+        val IslamHouse = BookOrigin(name = "www.islamhouse.com", url = "https://www.islamhouse.com")
+    }
 }
 
 @Serializable

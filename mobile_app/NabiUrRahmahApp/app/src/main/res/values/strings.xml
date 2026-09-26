@@ -13,6 +13,8 @@
 
     <!-- Home -->
     <string name="search_languages_hint">Search languages</string>
+    <string name="flyers_coming_title">Flyers are on their way</string>
+    <string name="flyers_coming_body">Flyers in every language are being prepared in full quality. They will appear here by themselves — nothing to update.</string>
     <string name="search_no_results_title">No matching language</string>
     <string name="search_no_results_body">We couldn’t find “%1$s”. Try its English name.</string>
     <string name="coming_soon">Coming soon</string>
@@ -111,6 +113,7 @@
         <item quantity="other">Available in %d languages</item>
     </plurals>
     <string name="share_book_chooser">Share book</string>
+    <string name="book_source">Source: %1$s</string>
     <string name="share_book_text">%1$s\n\nShared from the Nabi ur Rahmah app: %2$s</string>
     <string name="reader_preparing">Preparing the book…</string>
     <string name="reader_offline_hint">Once downloaded, this book opens instantly, even offline.</string>
