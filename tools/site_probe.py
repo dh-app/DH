@@ -24,13 +24,23 @@ def width_of(url):
     m = re.search(r"-(\d+)x(\d+)\.\w+$", url.split("?")[0])
     return (int(m.group(1)), int(m.group(2))) if m else None
 
+import time
 rows = []
-for q in ["darulhudaudupi.org/wp-content/uploads/2024/*", "darulhudaudupi.org/wp-content/uploads/2023/*",
-          "darulhudaudupi.org/wp-content/uploads/2025/*"]:
-    s, b = get(f"https://web.archive.org/cdx/search/cdx?url={q}&output=json&fl=original,timestamp,statuscode,mimetype,length&filter=statuscode:200&collapse=urlkey&limit=100000")
+queries = [
+    "url=darulhudaudupi.org/wp-content/uploads/*&limit=5000",
+    "url=darulhudaudupi.org/wp-content/uploads/2024/&matchType=prefix&limit=5000",
+    "url=darulhudaudupi.org/wp-content/uploads/2024/10/&matchType=prefix&limit=5000",
+]
+for q in queries:
+    for attempt in range(4):
+        s, b = get(f"https://web.archive.org/cdx/search/cdx?{q}&output=json&fl=original,timestamp,statuscode,mimetype,length&filter=statuscode:200&collapse=urlkey")
+        if s == 200: break
+        time.sleep(10 * (attempt + 1))
     got = json.loads(b)[1:] if s == 200 and b.strip().startswith(b"[") else []
     print(q, "status", s, "rows", len(got))
     rows += got
+rows = list({r[0]: r for r in rows}.values())
+print("distinct archived uploads:", len(rows))
 
 variants = defaultdict(list)
 for original, ts, status, mime, length in rows:
