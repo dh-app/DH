@@ -26,6 +26,7 @@ import org.darulhuda.nabiurrahmah.data.model.Playlist
 import org.darulhuda.nabiurrahmah.data.site.NabiSiteParser
 import org.darulhuda.nabiurrahmah.data.site.SiteLanguage
 import org.darulhuda.nabiurrahmah.data.source.CatalogStore
+import org.darulhuda.nabiurrahmah.data.source.PublishedCatalogSource
 import org.darulhuda.nabiurrahmah.data.source.WebsiteSource
 import org.darulhuda.nabiurrahmah.data.youtube.PlaylistSource
 
@@ -67,6 +68,8 @@ class CatalogRepository(
     private val website: WebsiteSource,
     private val store: CatalogStore,
     private val playlists: PlaylistSource = PlaylistSource { throw IOException("No video source") },
+    /** The catalogue built daily on GitHub; the website and YouTube are read directly only if it falls short. */
+    private val published: PublishedCatalogSource? = null,
     /** YouTube playlists always shown; more are picked up from the website. */
     private val configuredPlaylistIds: List<String> = emptyList(),
     private val parser: NabiSiteParser = NabiSiteParser(),
@@ -133,24 +136,35 @@ class CatalogRepository(
      * still update when the website can't be read, and the other way round.
      */
     private suspend fun readEverything(previous: Catalog?): Pair<Catalog?, CatalogError?> = coroutineScope {
+        // Usually one small download: the catalogue the daily build published.
+        val published = readPublished()
+        if (published != null && published.languages.isNotEmpty() && published.playlists.isNotEmpty()) {
+            return@coroutineScope published.copy(fetchedAt = clock()) to null
+        }
+        val publishedPlaylists = published?.playlists.orEmpty().associateBy { it.id }
         val savedPlaylists = previous?.playlists.orEmpty().associateBy { it.id }
-        val knownIds = (configuredPlaylistIds + savedPlaylists.keys).distinct()
-        val videoReads = knownIds.associateWith { id -> async { readPlaylist(id) } }.toMutableMap()
+        val knownIds = (configuredPlaylistIds + publishedPlaylists.keys + savedPlaylists.keys).distinct()
+        val videoReads = knownIds.filter { it !in publishedPlaylists }.associateWith { id -> async { readPlaylist(id) } }.toMutableMap()
 
-        val (site, siteError) = try {
-            readWebsite(previous).let { it to (if (it.failures > 0) CatalogError.Partial else null) }
-        } catch (e: IOException) {
-            null to CatalogError.Network
-        } catch (e: NoFlyersFoundException) {
-            null to CatalogError.InvalidData
+        val publishedFlyers = published?.languages?.takeIf { it.isNotEmpty() }
+        val (site, siteError) = if (publishedFlyers != null) {
+            null to null
+        } else {
+            try {
+                readWebsite(previous).let { it to (if (it.failures > 0) CatalogError.Partial else null) }
+            } catch (e: IOException) {
+                null to CatalogError.Network
+            } catch (e: NoFlyersFoundException) {
+                null to CatalogError.InvalidData
+            }
         }
 
-        site?.playlistIds?.filter { it !in videoReads }?.forEach { id -> videoReads[id] = async { readPlaylist(id) } }
+        site?.playlistIds?.filter { it !in videoReads && it !in publishedPlaylists }?.forEach { id -> videoReads[id] = async { readPlaylist(id) } }
         // Playlists removed from the website disappear; while it can't be read, keep the known ones.
-        val shownIds = if (site != null) (configuredPlaylistIds + site.playlistIds).distinct() else knownIds
-        val videos = shownIds.mapNotNull { id -> videoReads[id]?.await() ?: savedPlaylists[id] }
+        val shownIds = if (site != null) (configuredPlaylistIds + site.playlistIds + publishedPlaylists.keys).distinct() else knownIds
+        val videos = shownIds.mapNotNull { id -> publishedPlaylists[id] ?: videoReads[id]?.await() ?: savedPlaylists[id] }
 
-        val base = site?.catalog ?: previous
+        val base = site?.catalog ?: publishedFlyers?.let { Catalog(fetchedAt = clock(), languages = it) } ?: previous
         val catalog = when {
             base != null -> base.copy(playlists = videos)
             videos.isNotEmpty() -> Catalog(playlists = videos)
@@ -158,6 +172,17 @@ class CatalogRepository(
         }
         catalog to siteError
     }
+
+    private suspend fun readPublished(): Catalog? =
+        try {
+            published?.fetch()
+        } catch (e: IOException) {
+            null
+        } catch (e: SerializationException) {
+            null
+        } catch (e: IllegalArgumentException) {
+            null
+        }
 
     private suspend fun readPlaylist(id: String): Playlist? =
         try {

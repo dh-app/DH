@@ -15,6 +15,9 @@ jobs:
     name: Test, lint and build
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      LC_ALL: C.UTF-8
+      LANG: C.UTF-8
     defaults:
       run:
         working-directory: mobile_app/NabiUrRahmahApp
@@ -29,7 +32,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Unit tests
-        run: ./gradlew testDebugUnitTest
+        run: ./gradlew testDebugUnitTest :catalog-builder:test
 
       - name: Lint
         run: ./gradlew lintDebug
@@ -52,4 +55,5 @@ jobs:
           path: |
             mobile_app/NabiUrRahmahApp/app/build/reports/
             mobile_app/NabiUrRahmahApp/app/build/test-results/
+            mobile_app/NabiUrRahmahApp/catalog-builder/build/test-results/
           if-no-files-found: ignore

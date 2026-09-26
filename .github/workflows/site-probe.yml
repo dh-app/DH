@@ -1,9 +1,8 @@
 name: Site probe
 
 # Shows what the app's live sources return, from GitHub's network.
+# Run it from the Actions tab when a source seems broken.
 on:
-  push:
-    paths: [tools/site_probe.py, .github/workflows/site-probe.yml]
   workflow_dispatch:
 
 jobs:

@@ -22,3 +22,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "NabiUrRahmah"
 include(":app")
+// Runs on GitHub every day to publish library/catalog.json; see catalog-builder/README.md.
+include(":catalog-builder")

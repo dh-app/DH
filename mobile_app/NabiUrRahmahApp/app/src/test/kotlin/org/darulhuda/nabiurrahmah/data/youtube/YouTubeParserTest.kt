@@ -39,6 +39,40 @@ class YouTubeParserTest {
         assertEquals("https://i.ytimg.com/vi/2Xd9-hfUxXw/mqdefault.jpg", playlist.videos[0].thumbnailUrl)
     }
 
+    private fun shortItem(id: String, title: String, withOverlay: Boolean) = """
+        {"richItemRenderer":{"content":{"shortsLockupViewModel":{"entityId":"E$id",
+          "accessibilityText":"$title, 410 views - play Short",
+          ${if (withOverlay) "\"overlayMetadata\":{\"primaryText\":{\"content\":\"$title\"}}," else ""}
+          "onTap":{"innertubeCommand":{"commandMetadata":{"webCommandMetadata":{"url":"/shorts/$id"}},
+            "reelWatchEndpoint":{"videoId":"$id","playlistId":"PLx",
+              "thumbnail":{"thumbnails":[{"url":"https://i.ytimg.com/vi/$id/frame0.jpg","width":720,"height":1280}]}}}}}}}}
+    """
+
+    @Test
+    fun `reads playlists of shorts`() {
+        val html = """<script>var ytInitialData = {"contents":[${shortItem("2Xd9-hfUxXw", "Muslims are safe - Hadith Series", true)},
+            ${shortItem("oCGaAsmyf7o", "When Allah intends - Hadith Series", false)}],
+            "metadata":{"playlistMetadataRenderer":{"title":"Nabi-ur-Rahmah Series - Darul Huda Udupi"}}};</script>"""
+
+        val playlist = YouTubeParser.parsePlaylistPage(html, "PLx")!!
+
+        assertEquals("Nabi-ur-Rahmah Series - Darul Huda Udupi", playlist.title)
+        assertEquals(listOf("Muslims are safe - Hadith Series", "When Allah intends - Hadith Series"), playlist.videos.map { it.title })
+        assertEquals(true, playlist.videos.all { it.isShort })
+        assertEquals("https://www.youtube.com/shorts/2Xd9-hfUxXw", playlist.videos[0].watchUrl("PLx"))
+    }
+
+    @Test
+    fun `reads the escaped data pages served to phones`() {
+        val json = """{"contents":[${shortItem("abc12345678", "Make things easy", true)}]}"""
+        val escaped = json.map { c -> if (c == '{' || c == '}' || c == '"' || c == '[' || c == ']') "\\x%02x".format(c.code) else c.toString() }.joinToString("")
+        val html = "<script>var ytInitialData = '$escaped';</script>"
+
+        val playlist = YouTubeParser.parsePlaylistPage(html, "PLx")!!
+
+        assertEquals("Make things easy", playlist.videos.single().title)
+    }
+
     @Test
     fun `a page without playlist data is not a playlist`() {
         assertNull(YouTubeParser.parsePlaylistPage("<html>Before you continue to YouTube</html>", "PLtest"))
@@ -51,7 +85,7 @@ class YouTubeParserTest {
             <?xml version="1.0" encoding="UTF-8"?>
             <feed xmlns:yt="http://www.youtube.com/xml/schemas/2015" xmlns="http://www.w3.org/2005/Atom">
               <title>Nabi ur Rahmah</title>
-              <entry><yt:videoId>v1</yt:videoId><title>First &amp; best</title></entry>
+              <entry><yt:videoId>v1</yt:videoId><title>First &amp; best</title><link rel="alternate" href="https://www.youtube.com/shorts/v1"/></entry>
               <entry><yt:videoId>v2</yt:videoId><title>Second</title></entry>
             </feed>
             """.trimIndent(),
@@ -60,6 +94,7 @@ class YouTubeParserTest {
 
         assertEquals("Nabi ur Rahmah", playlist.title)
         assertEquals(listOf("First & best", "Second"), playlist.videos.map { it.title })
+        assertEquals(listOf(true, false), playlist.videos.map { it.isShort })
     }
 
     @Test
