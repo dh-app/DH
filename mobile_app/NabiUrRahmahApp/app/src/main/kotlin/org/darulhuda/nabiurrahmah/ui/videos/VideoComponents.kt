@@ -74,7 +74,11 @@ fun PlaylistCarousel(
         Spacer(Modifier.height(8.dp))
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             items(playlist.videos.take(CAROUSEL_SIZE), key = { it.id }) { video ->
-                VideoCard(video, onClick = { onOpenVideo(video) }, modifier = Modifier.width(248.dp))
+                VideoCard(
+                    video,
+                    onClick = { onOpenVideo(video) },
+                    modifier = Modifier.width(if (video.isShort) 152.dp else 248.dp),
+                )
             }
         }
     }
@@ -117,7 +121,7 @@ fun VideoRow(
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        VideoThumbnail(video, Modifier.width(144.dp), showPlaying = selected)
+        VideoThumbnail(video, Modifier.width(if (video.isShort) 72.dp else 144.dp), showPlaying = selected)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             if (selected) {
@@ -142,10 +146,11 @@ private fun VideoThumbnail(video: Video, modifier: Modifier = Modifier, showPlay
     Box(modifier.clip(MaterialTheme.shapes.small)) {
         RemoteImage(
             url = video.thumbnailUrl,
+            fallbackUrl = video.fallbackThumbnailUrl,
             contentDescription = null,
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(16f / 9f),
+                .aspectRatio(if (video.isShort) 9f / 16f else 16f / 9f),
         )
         if (showPlaying) {
             Box(

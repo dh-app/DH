@@ -12,6 +12,9 @@ fun interface PlaylistSource {
     suspend fun playlist(id: String): Playlist
 }
 
+private const val DESKTOP_USER_AGENT =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36"
+
 class YouTubePlaylistSource(private val client: OkHttpClient) : PlaylistSource {
 
     override suspend fun playlist(id: String): Playlist =
@@ -23,6 +26,8 @@ class YouTubePlaylistSource(private val client: OkHttpClient) : PlaylistSource {
         val request = Request.Builder()
             .url(url)
             .header("Accept-Language", "en")
+            // A desktop browser gets the plain page layout the parser reads.
+            .header("User-Agent", DESKTOP_USER_AGENT)
             // Skips the cookie-consent interstitial shown in some regions.
             .header("Cookie", "SOCS=CAI; CONSENT=YES+")
             .build()

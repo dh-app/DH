@@ -29,6 +29,8 @@ object YouTubeParser {
         var title: String? = null
 
         walk(data) { obj ->
+            // Shorts playlists (2026 layout): richItemRenderer → shortsLockupViewModel.
+            (obj["shortsLockupViewModel"] as? JsonObject)?.let { short -> shortFrom(short)?.let { videos.putIfAbsent(it.id, it) } }
             (obj["playlistVideoRenderer"] as? JsonObject)?.let { renderer ->
                 val id = renderer.string("videoId")
                 val videoTitle = renderer["title"]?.text()
@@ -45,12 +47,25 @@ object YouTubeParser {
         return Playlist(playlistId, title ?: metaTitle(html) ?: "", videos.values.toList())
     }
 
+    private fun shortFrom(short: JsonObject): Video? {
+        val endpoint = ((short["onTap"] as? JsonObject)?.get("innertubeCommand") as? JsonObject)?.get("reelWatchEndpoint") as? JsonObject
+        val id = endpoint?.string("videoId") ?: return null
+        val overlay = short["overlayMetadata"] as? JsonObject
+        val title = ((overlay?.get("primaryText") as? JsonObject)?.string("content"))
+            // "Title, 410 views - play Short"
+            ?: short.string("accessibilityText")?.replace(Regex(",\\s*[^,]*views?\\s*-\\s*play Short$", RegexOption.IGNORE_CASE), "")
+            ?: return null
+        if (title in UNAVAILABLE_TITLES) return null
+        return Video(id, title.trim(), isShort = true)
+    }
+
     fun parseFeed(xml: String, playlistId: String): Playlist? {
         val document = Jsoup.parse(xml, "", Parser.xmlParser())
         val videos = document.select("entry").mapNotNull { entry ->
             val id = entry.selectFirst("yt|videoId")?.text()?.trim().orEmpty()
             val title = entry.selectFirst("title")?.text()?.trim().orEmpty()
-            if (id.isEmpty() || title.isEmpty() || title in UNAVAILABLE_TITLES) null else Video(id, title)
+            val isShort = entry.selectFirst("link[rel=alternate]")?.attr("href")?.contains("/shorts/") == true
+            if (id.isEmpty() || title.isEmpty() || title in UNAVAILABLE_TITLES) null else Video(id, title, isShort = isShort)
         }.distinctBy { it.id }
         if (videos.isEmpty()) return null
         val title = document.selectFirst("feed > title")?.text()?.trim().orEmpty()
@@ -71,8 +86,10 @@ object YouTubeParser {
             (id.startsWith("PL") || id.startsWith("UU") || id.startsWith("OL"))
 
     /** The `ytInitialData` object embedded in the page's script. */
-    private fun extractInitialData(html: String): JsonElement? {
-        val marker = html.indexOf("ytInitialData")
+    private fun extractInitialData(page: String): JsonElement? {
+        // Pages served to phones embed the data as an escaped JS string: '\\x7b\\x22…'.
+        val html = if (page.contains("ytInitialData = '")) unescapeJs(page.substringAfter("ytInitialData = '").substringBefore("';")) else page
+        val marker = html.indexOf("ytInitialData").let { if (it < 0 && html.startsWith("{")) 0 else it }
         if (marker < 0) return null
         val start = html.indexOf('{', marker)
         if (start < 0) return null
@@ -102,6 +119,15 @@ object YouTubeParser {
         }
         return null
     }
+
+    private fun unescapeJs(text: String): String =
+        Regex("\\\\x([0-9a-fA-F]{2})|\\\\u([0-9a-fA-F]{4})|\\\\(.)").replace(text) { m ->
+            when {
+                m.groups[1] != null -> m.groupValues[1].toInt(16).toChar().toString()
+                m.groups[2] != null -> m.groupValues[2].toInt(16).toChar().toString()
+                else -> m.groupValues[3]
+            }
+        }
 
     private fun walk(element: JsonElement, visit: (JsonObject) -> Unit) {
         when (element) {

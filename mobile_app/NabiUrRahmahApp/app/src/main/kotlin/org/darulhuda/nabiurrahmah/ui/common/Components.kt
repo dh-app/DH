@@ -77,7 +77,10 @@ fun RemoteImage(
     contentDescription: String?,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
+    fallbackUrl: String? = null,
 ) {
+    // Swapped in once if the first address fails (e.g. a Short without a portrait thumbnail).
+    var model by remember(url) { mutableStateOf(url) }
     var state by remember(url) { mutableStateOf<AsyncImagePainter.State>(AsyncImagePainter.State.Empty) }
     val loading = state is AsyncImagePainter.State.Loading || state is AsyncImagePainter.State.Empty
     Box(
@@ -87,11 +90,17 @@ fun RemoteImage(
         contentAlignment = Alignment.Center,
     ) {
         AsyncImage(
-            model = url,
+            model = model,
             contentDescription = contentDescription,
             modifier = Modifier.matchParentSize(),
             contentScale = contentScale,
-            onState = { state = it },
+            onState = {
+                if (it is AsyncImagePainter.State.Error && fallbackUrl != null && model != fallbackUrl) {
+                    model = fallbackUrl
+                } else {
+                    state = it
+                }
+            },
         )
         if (state is AsyncImagePainter.State.Error) {
             Icon(

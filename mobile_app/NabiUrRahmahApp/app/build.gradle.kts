@@ -8,7 +8,8 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-val siteUrl = providers.gradleProperty("nur.siteUrl").get()
+val siteUrl = providers.gradleProperty("nur.siteUrl").get().split(',').first().trim()
+val publishedBase = providers.gradleProperty("nur.publishedBase").get()
 val youtubePlaylists = providers.gradleProperty("nur.youtubePlaylists").getOrElse("")
 fun shelf(name: String) = providers.gradleProperty("nur.shelf.$name").getOrElse("")
 
@@ -34,6 +35,7 @@ android {
         versionName = "2.0.0"
 
         buildConfigField("String", "SITE_URL", "\"$siteUrl\"")
+        buildConfigField("String", "PUBLISHED_CATALOG_URL", "\"${publishedBase}catalog.json\"")
         buildConfigField("String", "YOUTUBE_PLAYLISTS", "\"$youtubePlaylists\"")
         buildConfigField("String", "SHELF_BIOGRAPHY", "\"${shelf("biography")}\"")
         buildConfigField("String", "SHELF_TESTIMONIES", "\"${shelf("testimonies")}\"")

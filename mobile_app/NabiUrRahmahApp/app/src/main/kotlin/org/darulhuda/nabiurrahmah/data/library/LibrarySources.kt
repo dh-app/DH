@@ -29,6 +29,9 @@ fun interface BookSource {
     suspend fun books(): List<Book>
 }
 
+/** An API listing address: the language it is written in, and the page. */
+private typealias Listing = (language: String, page: Int) -> String
+
 /**
  * An IslamHouse category, in every language it is published in. Tries the
  * public API first (several URL forms it has used) and falls back to reading
@@ -43,9 +46,9 @@ class IslamHouseCategorySource(
 
     override suspend fun books(): List<Book> {
         var reachedServer = false
-        for (variant in apiVariants()) {
+        for (listing in apiListings()) {
             val items = try {
-                readApi(variant)
+                readApi { page -> listing(interfaceLanguage, page) }
             } catch (e: SerializationException) {
                 reachedServer = true
                 null
@@ -55,19 +58,57 @@ class IslamHouseCategorySource(
             }
             if (items == null) continue
             reachedServer = true
-            if (items.isNotEmpty()) return IslamHouseParser.group(items)
+            if (items.isNotEmpty()) return IslamHouseParser.group(inTheirOwnLanguage(items, listing))
         }
         val fromWebsite = readWebsite()
         if (fromWebsite.isNotEmpty() || reachedServer) return IslamHouseParser.group(fromWebsite)
         throw IOException("IslamHouse could not be reached")
     }
 
-    private fun apiVariants(): List<(Int) -> String> {
+    /**
+     * One listing covers books in every language, but describes them all in
+     * [interfaceLanguage]. Each language's own listing has the title and author
+     * in that language's script (and sometimes books the first one lacks), so it
+     * replaces those details wherever it can be read.
+     */
+    private suspend fun inTheirOwnLanguage(items: List<IslamHouseItem>, listing: Listing): List<IslamHouseItem> {
+        val languages = items.map { it.language }.distinct().filter { it != interfaceLanguage }
+        if (languages.isEmpty()) return items
+        val semaphore = Semaphore(4)
+        val native = coroutineScope {
+            languages.map { language ->
+                async {
+                    semaphore.withPermit {
+                        val found = try {
+                            readApi { page -> listing(language, page) }
+                        } catch (e: IOException) {
+                            null
+                        } catch (e: SerializationException) {
+                            null
+                        } catch (e: IllegalArgumentException) {
+                            null
+                        }
+                        found.orEmpty().filter { it.language == language && it.detailsLanguage == language }
+                    }
+                }
+            }.awaitAll().flatten().associateBy { it.id }
+        }
+        val listed = items.map { item ->
+            native[item.id]?.let { own ->
+                own.copy(author = own.author ?: item.author, description = own.description ?: item.description)
+            } ?: item
+        }
+        val ids = items.mapTo(HashSet()) { it.id }
+        return listed + native.values.filter { it.id !in ids }
+    }
+
+    /** The URL forms the API has used; the first is the current one. */
+    private fun apiListings(): List<Listing> {
         val base = "https://api3.islamhouse.com/v3/$apiKey/main/get-category-items/$categoryId"
         return listOf(
-            { page -> "$base/showall/showall/$interfaceLanguage/$page/$PAGE_SIZE/json" },
-            { page -> "$base/showall/$interfaceLanguage/showall/$page/$PAGE_SIZE/json" },
-            { page -> "$base/books/showall/$interfaceLanguage/$page/$PAGE_SIZE/json" },
+            { language, page -> "$base/showall/$language/showall/$page/$PAGE_SIZE/json" },
+            { language, page -> "$base/showall/showall/$language/$page/$PAGE_SIZE/json" },
+            { language, page -> "$base/books/showall/$language/$page/$PAGE_SIZE/json" },
         )
     }
 

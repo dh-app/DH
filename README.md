@@ -12,9 +12,11 @@ DH/
 ├── library/                      PDF books shown in the app; upload here to publish
 │   ├── prophetic-biography/
 │   ├── what-they-say/
-│   └── books-on-prophet/
+│   ├── books-on-prophet/
+│   ├── flyers/                   flyers: copied from the website, or uploaded per language
+│   └── catalog.json              flyers and videos for the app, rebuilt nightly
 ├── archive/                      earlier uploads, kept for reference; not used by the app
-└── .github/workflows/            CI: tests, lint and a debug APK on every push
+└── .github/workflows/            CI: tests, lint, debug APK; the nightly flyer and video catalogue
 ```
 
 ## The app
@@ -41,23 +43,27 @@ without an API key. The app uses the playlist page (up to 100 videos, with durat
 falls back to the RSS feed. **Any YouTube playlist linked or embedded on the Nabi ur Rahmah web
 page is added automatically**, and new videos in a playlist appear by themselves.
 
-### Flyers come straight from the website
+### Flyers and videos: one nightly catalogue
+Phones download a single small file, [`library/catalog.json`](library/catalog.json). The
+[Catalogue workflow](.github/workflows/catalog.yml) rebuilds it every night and whenever flyers
+are uploaded, using the same parsing code as the app (`mobile_app/NabiUrRahmahApp/catalog-builder/`):
 
-The app reads [darulhudaudupi.org/nabi-ur-rahmah](https://darulhudaudupi.org/nabi-ur-rahmah/)
-and the language pages it links to. **Publishing a flyer on the website is all it takes.**
-There is nothing to upload to GitHub and no app update to release.
+- it reads darulhudaudupi.org/nabi-ur-rahmah and its language pages (or the Wayback Machine's copy
+  while the site is down) and copies every flyer into `library/flyers/_from-website/` in full size,
+  with a sharp display copy and a small preview for grids;
+- it adds flyers uploaded to `library/flyers/<Language>/`, images or PDFs (each PDF page becomes a flyer);
+- it reads the YouTube playlists in full, Shorts included.
 
-The reader (`data/site/NabiSiteParser.kt`) doesn't depend on one exact page layout. It understands:
-- links to a page per language, labelled in English or the language's own script
-  (`Urdu`, `اردو`, `ಕನ್ನಡ`), or with the language in the URL (`/nabi-ur-rahmah-tamil/`);
-- flyers placed under a language heading, tab or accordion on the page itself;
-- flyer images (WordPress galleries, lazy-loaded images), PDF links and Google Drive links.
+A flyer is published only once its full-size image is in the repository, so nothing blurry reaches
+phones. If the catalogue can't be downloaded, the app falls back to reading the website and YouTube
+itself.
 
-It ignores the header, footer, menus, logos and icons, plus banners that repeat across pages.
-For each flyer it picks a small rendition for the grid and the largest one for the viewer.
-A PDF with no preview image gets its first page rendered on the phone.
+The website reader (`data/site/NabiSiteParser.kt`) doesn't depend on one exact page layout. It
+understands language pages labelled in English or their own script, flyers under headings, tabs or
+accordions, WordPress galleries, PDF links and Google Drive links, and it ignores menus, logos and
+banners that repeat across pages.
 
-### Performance
+## Performance
 
 - **Instant start.** The last catalogue is saved on the phone and shown immediately.
 - **Progressive loading.** The language list appears as soon as the main page is read. Each
@@ -130,7 +136,7 @@ Upload PDFs on GitHub with **Add file → Upload files** into the tile's folder 
 | What they say about Prophet Muhammad ﷺ | `library/what-they-say/` | `what-they-say` |
 | Books on Prophet Muhammad ﷺ | `library/books-on-prophet/` | `books-on-prophet` |
 
-The Biography tile also lists IslamHouse's Seerah category in every language.
+The Biography tile also lists IslamHouse's Seerah category in every language, credited "Source: www.islamhouse.com".
 
 List each book's proper title and author in the folder's `books.txt`:
 

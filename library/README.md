@@ -25,3 +25,24 @@ PDF books shown in the app. **Uploading a PDF here publishes it; no app update n
    the language out from the title.
 
 Phones pick up changes within 12 hours, or right away when someone pulls down to refresh.
+
+## Flyers and videos
+
+The **Teachings** tiles read one file, [`catalog.json`](catalog.json), which the
+[Catalogue workflow](../.github/workflows/catalog.yml) rebuilds every night (and whenever
+flyers are uploaded). Nobody edits it by hand. Each run:
+
+- reads the Nabi ur Rahmah pages on darulhudaudupi.org, or the Wayback Machine's copy
+  while the site is down, and copies every flyer here in full size (`flyers/_from-website/`);
+- adds the flyers uploaded to `flyers/<Language>/`;
+- reads both YouTube playlists in full.
+
+A flyer only reaches phones once its full-size image is here, so nothing blurry is shown.
+Ones the website can't serve yet are tried again on every run.
+
+### Adding flyers
+
+Create a folder named after the language, in English or its own script (`flyers/Hindi/`,
+`flyers/اردو/`), and upload images (JPG, PNG) or a **PDF**. Each page of a PDF becomes its own
+flyer, rendered at print quality, so one PDF per language is enough. Phones get them after the
+next run, usually within minutes of the upload.

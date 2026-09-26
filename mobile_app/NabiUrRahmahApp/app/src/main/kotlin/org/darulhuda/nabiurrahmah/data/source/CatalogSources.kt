@@ -52,6 +52,30 @@ class HttpWebsiteSource(private val client: OkHttpClient) : WebsiteSource {
     }
 }
 
+/** The catalogue published daily by the GitHub build (library/catalog.json). */
+fun interface PublishedCatalogSource {
+    /** @return the catalogue, or null if none is published. @throws IOException when unreachable. */
+    suspend fun fetch(): org.darulhuda.nabiurrahmah.data.model.Catalog?
+}
+
+class HttpPublishedCatalogSource(
+    private val client: OkHttpClient,
+    private val url: HttpUrl,
+) : PublishedCatalogSource {
+
+    override suspend fun fetch() = runInterruptible(Dispatchers.IO) {
+        // Revalidated each time, so an unchanged catalogue costs a 304.
+        val request = Request.Builder().url(url).cacheControl(CacheControl.Builder().noCache().build()).build()
+        client.newCall(request).execute().use { response ->
+            when {
+                response.code == 404 -> null
+                !response.isSuccessful -> throw IOException("HTTP ${response.code} for $url")
+                else -> response.body?.string()?.let(org.darulhuda.nabiurrahmah.data.CatalogJson::decodeCatalog)
+            }
+        }
+    }
+}
+
 /** The last catalogue read from the website, kept for instant start-up and offline use. */
 interface CatalogStore {
     fun read(): String?

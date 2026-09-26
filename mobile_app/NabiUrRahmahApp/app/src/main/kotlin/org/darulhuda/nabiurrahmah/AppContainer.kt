@@ -19,6 +19,7 @@ import org.darulhuda.nabiurrahmah.data.library.TextFetcher
 import org.darulhuda.nabiurrahmah.data.library.bookSourcesFrom
 import org.darulhuda.nabiurrahmah.data.model.About
 import org.darulhuda.nabiurrahmah.data.source.FileCatalogStore
+import org.darulhuda.nabiurrahmah.data.source.HttpPublishedCatalogSource
 import org.darulhuda.nabiurrahmah.data.source.HttpWebsiteSource
 import org.darulhuda.nabiurrahmah.data.youtube.YouTubePlaylistSource
 import org.darulhuda.nabiurrahmah.platform.BookDownloads
@@ -55,6 +56,7 @@ class AppContainer(context: Context, private val appScope: CoroutineScope) {
             website = HttpWebsiteSource(okHttpClient),
             store = FileCatalogStore(File(appContext.filesDir, "catalog.json")),
             playlists = YouTubePlaylistSource(okHttpClient),
+            published = HttpPublishedCatalogSource(okHttpClient, BuildConfig.PUBLISHED_CATALOG_URL.toHttpUrl()),
             configuredPlaylistIds = BuildConfig.YOUTUBE_PLAYLISTS.split(',').map { it.trim() }.filter { it.isNotEmpty() },
         )
     }

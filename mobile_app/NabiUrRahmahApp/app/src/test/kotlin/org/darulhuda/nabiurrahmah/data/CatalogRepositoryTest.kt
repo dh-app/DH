@@ -15,6 +15,7 @@ import org.darulhuda.nabiurrahmah.data.source.WebsiteSource
 import org.darulhuda.nabiurrahmah.data.model.Playlist
 import org.darulhuda.nabiurrahmah.data.model.Video
 import org.darulhuda.nabiurrahmah.data.youtube.PlaylistSource
+import org.darulhuda.nabiurrahmah.data.source.PublishedCatalogSource
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -55,6 +56,7 @@ class CatalogRepositoryTest {
         now: () -> Long = { 1_000_000L },
         playlists: PlaylistSource = PlaylistSource { throw IOException("offline") },
         configuredPlaylists: List<String> = emptyList(),
+        published: PublishedCatalogSource? = null,
     ) =
         CatalogRepository(
             indexUrl = index,
@@ -62,6 +64,7 @@ class CatalogRepositoryTest {
             store = store,
             playlists = playlists,
             configuredPlaylistIds = configuredPlaylists,
+            published = published,
             clock = now,
             ioDispatcher = StandardTestDispatcher(testScheduler),
             parseDispatcher = StandardTestDispatcher(testScheduler),
@@ -255,5 +258,56 @@ class CatalogRepositoryTest {
         repo.refresh()
 
         assertEquals(listOf("old"), repo.state.value.catalog!!.playlists.single().videos.map { it.id })
+    }
+
+    @Test
+    fun `a complete published catalogue is used as is, without touching the website`() = runTest {
+        val published = Catalog(
+            languages = listOf(Language("hi", "Hindi", flyers = listOf(Flyer("h1", "https://raw.example/h1.jpg")))),
+            playlists = listOf(playlist("PL1", "v1")),
+        )
+        val website = FakeWebsite(mutableMapOf())
+        val repo = repository(website, published = { published }, configuredPlaylists = listOf("PL1"))
+
+        repo.load()
+
+        assertEquals(listOf("hi"), repo.state.value.catalog!!.languages.map { it.code })
+        assertEquals(listOf("PL1"), repo.state.value.catalog!!.playlists.map { it.id })
+        assertNull(repo.state.value.error)
+        assertTrue("one download, nothing else", website.requests.isEmpty())
+    }
+
+    @Test
+    fun `published flyers with no videos still read youtube`() = runTest {
+        val published = Catalog(languages = listOf(Language("hi", "Hindi", flyers = listOf(Flyer("h1", "h1.jpg")))))
+        val website = FakeWebsite(mutableMapOf())
+        val repo = repository(
+            website,
+            published = { published },
+            playlists = { id -> playlist(id, "v1") },
+            configuredPlaylists = listOf("PL1"),
+        )
+
+        repo.load()
+
+        assertEquals(1, repo.state.value.catalog!!.flyerCount)
+        assertEquals(listOf("PL1"), repo.state.value.catalog!!.playlists.map { it.id })
+        assertTrue(website.requests.isEmpty())
+        assertNull(repo.state.value.error)
+    }
+
+    @Test
+    fun `an unreachable published catalogue falls back to the website`() = runTest {
+        val website = FakeWebsite(
+            mutableMapOf(
+                index.toString() to indexHtml("English"),
+                "https://site.test/nabi-ur-rahmah-english/" to flyersHtml("en-1"),
+            ),
+        )
+        val repo = repository(website, published = { throw IOException("github down") })
+
+        repo.load()
+
+        assertEquals(1, repo.state.value.catalog!!.flyerCount)
     }
 }

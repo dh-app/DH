@@ -17,10 +17,13 @@ data class IslamHouseItem(
     /** Shared by translations of the same work. */
     val groupId: String,
     val title: String,
+    /** The language of the book itself. */
     val language: String,
     val author: String?,
     val description: String?,
     val files: List<BookFile>,
+    /** The language the title and description are written in (the listing's language). */
+    val detailsLanguage: String? = null,
 )
 
 data class IslamHousePage(val items: List<IslamHouseItem>, val totalPages: Int?)
@@ -59,8 +62,10 @@ object IslamHouseParser {
             BookFile(url = url, format = format, size = attachment.text("size"), label = attachment.text("description")?.clean())
         }
         if (files.isEmpty()) return null
-        val language = item.text("translated_language") ?: item.text("source_language") ?: item.text("language")
-            ?: languageFromFileUrl(files.first().url) ?: return null
+        // "translated_language" is only the language this listing is written in;
+        // "source_language" is the book's own.
+        val language = item.text("source_language") ?: languageFromFileUrl(files.first().url)
+            ?: item.text("language") ?: item.text("translated_language") ?: return null
         val people = (item["prepared_by"] as? JsonArray).orEmpty().mapNotNull { it as? JsonObject }
         val author = (people.filter { it.text("kind") == "author" }.ifEmpty { people })
             .mapNotNull { it.text("title")?.clean() }.distinct().joinToString(", ").ifEmpty { null }
@@ -72,6 +77,7 @@ object IslamHouseParser {
             author = author,
             description = item.text("description")?.let(::stripHtml)?.takeIf { it.isNotBlank() },
             files = files,
+            detailsLanguage = item.text("translated_language")?.lowercase(),
         )
     }
 
@@ -112,6 +118,7 @@ object IslamHouseParser {
                 editions = editions.distinctBy { it.language }.map { item ->
                     Edition(item.id, item.language, item.title, item.author, item.description, item.files)
                 },
+                source = BookOrigin.IslamHouse,
             )
         }
 
