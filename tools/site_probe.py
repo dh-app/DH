@@ -1,81 +1,65 @@
 """Prints what the app's sources really return, for debugging from CI."""
-import json, re, sys, urllib.parse, urllib.request
-from html.parser import HTMLParser
+import json, re, socket, ssl, subprocess, urllib.request
 
-UA = "NabiUrRahmah/2.0 (Android)"
+UA = "Mozilla/5.0 (Linux; Android 14) NabiUrRahmah/2.0"
 
-def get(url, ua=UA):
-    req = urllib.request.Request(url, headers={"User-Agent": ua, "Accept": "text/html,application/json,*/*"})
+def get(url):
+    req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "*/*"})
     try:
         with urllib.request.urlopen(req, timeout=30) as r:
-            body = r.read()
-            return r.status, r.geturl(), dict(r.headers), body
+            return r.status, r.geturl(), dict(r.headers), r.read()
     except urllib.error.HTTPError as e:
         return e.code, url, dict(e.headers), e.read()
     except Exception as e:  # noqa
-        return None, url, {}, str(e).encode()
+        return None, url, {}, repr(e).encode()
 
-class Links(HTMLParser):
-    def __init__(self):
-        super().__init__(); self.items = []; self._a = None; self._text = []
-    def handle_starttag(self, tag, attrs):
-        a = dict(attrs)
-        if tag == "a" and a.get("href"):
-            self._a = a["href"]; self._text = []
-        if tag == "img":
-            self.items.append(("img", a.get("src") or "", {k: v for k, v in a.items() if k in ("data-src", "data-lazy-src", "srcset", "data-srcset", "alt", "width", "height", "class")}))
-        if tag == "iframe":
-            self.items.append(("iframe", a.get("src") or a.get("data-src") or "", {}))
-    def handle_data(self, data):
-        if self._a is not None: self._text.append(data.strip())
-    def handle_endtag(self, tag):
-        if tag == "a" and self._a is not None:
-            self.items.append(("a", self._a, " ".join(t for t in self._text if t)[:80])); self._a = None
+def sh(cmd):
+    print("$", cmd)
+    out = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=60)
+    print((out.stdout + out.stderr)[-3000:])
 
-def probe(url, limit=150):
-    print("=" * 100); print("GET", url)
-    status, final, headers, body = get(url)
-    print("status:", status, "| final:", final, "| type:", headers.get("Content-Type"), "| bytes:", len(body))
-    for h in ("Server", "CF-RAY", "Cache-Control", "ETag", "Last-Modified"):
-        if h in headers: print(f"  {h}: {headers[h]}")
-    if status != 200 or b"<" not in body[:2000]:
-        print(body[:500].decode("utf-8", "replace")); return None
-    html = body.decode("utf-8", "replace")
-    title = re.search(r"<title>(.*?)</title>", html, re.S)
-    print("title:", title.group(1).strip() if title else None)
-    p = Links(); p.feed(html)
-    shown = 0
-    for kind, ref, extra in p.items:
-        if kind == "a" and not re.search(r"(wp-content|nabi|rahmah|\.pdf|\.jpe?g|\.png|drive\.google|youtu)", ref, re.I):
-            continue
-        print(f"  {kind:6} {ref[:160]}  {extra if extra else ''}")
-        shown += 1
-        if shown >= limit: print("  ..."); break
-    return html
+print("#### DNS / TLS")
+sh("getent hosts darulhudaudupi.org www.darulhudaudupi.org")
+for host in ("darulhudaudupi.org", "www.darulhudaudupi.org"):
+    sh(f"echo | timeout 20 openssl s_client -connect {host}:443 -servername {host} 2>&1 | grep -E 'subject=|issuer=|Verify return|alert|DNS:|error' | head")
+    sh(f"echo | timeout 20 openssl s_client -connect {host}:443 -servername {host} 2>/dev/null | openssl x509 -noout -ext subjectAltName -dates 2>&1 | head")
+    sh(f"echo | timeout 20 openssl s_client -connect {host}:443 2>/dev/null | openssl x509 -noout -subject -ext subjectAltName 2>&1 | head")
+sh("curl -sSI --max-time 20 http://darulhudaudupi.org/ | head -12")
+sh("curl -sSI --max-time 20 https://www.darulhudaudupi.org/ | head -12")
+sh("curl -sSIk --max-time 20 https://darulhudaudupi.org/ | head -12")
 
-site = "https://darulhudaudupi.org/nabi-ur-rahmah%EF%B7%BA/"
-probe("https://darulhudaudupi.org/nabi-ur-rahmah/", limit=10)
-index = probe(site)
-if index:
-    langs = sorted(set(re.findall(r'href="([^"]*nabi-ur-rahmah[^"]*)"', index)))
-    print("language-like links:", len(langs))
-    for l in langs[:40]: print("   ", l)
-probe("https://darulhudaudupi.org/nabi-ur-rahmah%ef%b7%ba/hindi-nabi-ur-rahmah/")
+print("#### PAGES (whichever address works)")
+for base in ("https://www.darulhudaudupi.org", "http://darulhudaudupi.org", "http://www.darulhudaudupi.org"):
+    for path in ("/nabi-ur-rahmah%EF%B7%BA/", "/nabi-ur-rahmah%ef%b7%ba/hindi-nabi-ur-rahmah/"):
+        status, final, headers, body = get(base + path)
+        print(base + path, "->", status, final, headers.get("Content-Type"), len(body))
+        if status == 200 and b"<html" in body[:5000].lower():
+            html = body.decode("utf-8", "replace")
+            main = re.search(r"<main.*?</main>|<article.*?</article>|class=\"entry-content.*", html, re.S)
+            chunk = (main.group(0) if main else html)
+            links = re.findall(r'<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>', chunk, re.S)
+            imgs = re.findall(r"<img[^>]+>", chunk)
+            print("   links:", len(links), "imgs:", len(imgs))
+            for href, text in links[:60]:
+                t = re.sub(r"<[^>]+>", " ", text); t = re.sub(r"\s+", " ", t).strip()
+                print("   A", href[:150], "|", t[:60])
+            for tag in imgs[:25]:
+                print("   IMG", re.sub(r"\s+", " ", tag)[:300])
+            with open("/tmp/page.html", "w") as f: f.write(html)
+            break
 
-print("=" * 100)
-for pl in ("PLcF_nL7kXdt2VWfAg3XkhXaOEjH5KYviq", "PLcF_nL7kXdt0udlvCNfprkl5r0upR9iir"):
-    status, _, _, body = get(f"https://www.youtube.com/playlist?list={pl}")
-    text = body.decode("utf-8", "replace")
-    print("youtube page", pl, status, "bytes", len(body), "ytInitialData:", "ytInitialData" in text,
-          "renderers:", text.count("playlistVideoRenderer"), "title:", (re.search(r'"playlistMetadataRenderer":\{"title":"([^"]+)"', text) or [None, None])[1])
-    status, _, _, body = get(f"https://www.youtube.com/feeds/videos.xml?playlist_id={pl}")
-    print("youtube feed", pl, status, "entries:", body.count(b"<entry>"))
+print("#### YOUTUBE structure")
+status, _, _, body = get("https://www.youtube.com/playlist?list=PLcF_nL7kXdt2VWfAg3XkhXaOEjH5KYviq")
+text = body.decode("utf-8", "replace")
+for key in ("playlistVideoRenderer", "lockupViewModel", "playlistVideoListRenderer", "richItemRenderer", "videoRenderer", "contentId", "\"videoId\"", "playlistHeaderRenderer", "pageHeaderViewModel", "playlistMetadataRenderer", "lengthSeconds", "thumbnailOverlayTimeStatusRenderer"):
+    print(f"   {key}: {text.count(key)}")
+i = text.find('"videoId"')
+print("   around first videoId:", text[max(0, i - 800):i + 1500].replace("\\u0026", "&"))
+m = re.search(r'"title":\{"simpleText":"([^"]+)"', text); print("   a simpleText title:", m and m.group(1))
+m = re.search(r'<meta property="og:title" content="([^"]+)"', text); print("   og:title:", m and m.group(1))
 
-print("=" * 100)
-key = "paV29H2gm56kvLPy"
-for path in ("showall/showall/en/1/5/json", "showall/en/showall/1/5/json", "books/showall/en/1/5/json", "books/en/en/1/5/json"):
-    url = f"https://api3.islamhouse.com/v3/{key}/main/get-category-items/795/{path}"
-    status, _, _, body = get(url)
-    print("islamhouse", path, status, body[:300].decode("utf-8", "replace").replace("\n", " "))
-status, _, _, body = get("https://islamhouse.com/en/category/795/showall/showall/1/")
-print("islamhouse web", status, "bytes", len(body), "item links:", len(set(re.findall(rb'/en/books/\d+', body))))
+print("#### ISLAMHOUSE item")
+status, _, _, body = get("https://api3.islamhouse.com/v3/paV29H2gm56kvLPy/main/get-category-items/795/showall/en/showall/1/2/json")
+data = json.loads(body)
+print(json.dumps(data.get("links"), ensure_ascii=False))
+print(json.dumps(data.get("data", [None])[0], ensure_ascii=False, indent=1)[:3500])
