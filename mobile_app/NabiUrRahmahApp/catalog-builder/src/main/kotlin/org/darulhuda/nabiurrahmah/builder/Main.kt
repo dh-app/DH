@@ -3,6 +3,7 @@ package org.darulhuda.nabiurrahmah.builder
 import java.io.File
 import java.util.Properties
 import java.util.concurrent.TimeUnit
+import kotlin.system.exitProcess
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -35,7 +36,7 @@ private const val DESKTOP = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebK
  *
  * Usage: run from the repository root.
  */
-fun main(args: Array<String>) = runBlocking(Dispatchers.Default) {
+fun main(args: Array<String>) = runBlocking<Unit>(Dispatchers.Default) {
     val repoRoot = File(args.getOrNull(0) ?: ".").canonicalFile
     val properties = Properties().apply {
         File(repoRoot, "mobile_app/NabiUrRahmahApp/gradle.properties").inputStream().use(::load)
@@ -107,6 +108,14 @@ fun main(args: Array<String>) = runBlocking(Dispatchers.Default) {
     val catalog = Catalog(languages = merge(websiteLanguages, uploaded), playlists = playlists)
     report.append("\n| Language | Flyers |\n|---|---|\n")
     catalog.languages.forEach { report.append("| ${it.name} (${it.nativeName}) | ${it.flyers.size} |\n") }
+
+    // Publishing nothing would hide what phones already have; fail the run so it gets noticed.
+    if (catalog.languages.isEmpty() && catalog.playlists.isEmpty()) {
+        report.append("\n**Nothing could be read, so catalog.json was left as it is.**\n")
+        println(report)
+        System.getenv("GITHUB_STEP_SUMMARY")?.let { File(it).appendText(report.toString()) }
+        exitProcess(1)
+    }
 
     val output = json.encodeToString(Catalog.serializer(), catalog) + "\n"
     if (layout.catalog.takeIf { it.isFile }?.readText() != output) {

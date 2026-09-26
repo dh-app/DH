@@ -1,8 +1,7 @@
 package org.darulhuda.nabiurrahmah.ui.videos
 
 import android.view.View
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxWidth
+import android.view.ViewGroup
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -24,7 +23,7 @@ import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.views.YouTube
 
 /**
  * The official YouTube player (IFrame API), embedded. Pauses with the screen,
- * resumes where it was, and hands over its full-screen view via [onEnterFullscreen].
+ * resumes where it was, fills whatever size [modifier] gives it, and hands over its full-screen view via [onEnterFullscreen].
  */
 @Composable
 fun YouTubeVideoPlayer(
@@ -46,9 +45,7 @@ fun YouTubeVideoPlayer(
     var position by rememberSaveable(videoId) { mutableFloatStateOf(0f) }
 
     AndroidView(
-        modifier = modifier
-            .fillMaxWidth()
-            .aspectRatio(16f / 9f),
+        modifier = modifier,
         factory = { context ->
             YouTubePlayerView(context).apply {
                 enableAutomaticInitialization = false
@@ -93,6 +90,10 @@ fun YouTubeVideoPlayer(
                     options,
                 )
             }
+        },
+        // The player forces 16:9 while its height wraps content; let the caller size it (Shorts are 9:16).
+        update = { view ->
+            if (view.layoutParams?.height != ViewGroup.LayoutParams.MATCH_PARENT) view.matchParent()
         },
         onRelease = { view ->
             lifecycle.removeObserver(view)
