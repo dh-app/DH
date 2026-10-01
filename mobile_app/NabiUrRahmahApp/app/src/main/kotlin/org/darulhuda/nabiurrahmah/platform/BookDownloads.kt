@@ -110,12 +110,12 @@ class BookDownloads(
                     }
                 }
             }
+            if (total != null && read != total) {
+                partial.delete()
+                throw IOException("Download of $url stopped at $read of $total bytes")
+            }
         }
         // Never keep a half or wrong file as a "downloaded" book: it would fail to open every time.
-        if (total != null && read != total) {
-            partial.delete()
-            throw IOException("Download of $url stopped at $read of $total bytes")
-        }
         if (!partial.isPdf()) {
             partial.delete()
             throw IOException("$url is not a PDF")

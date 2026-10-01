@@ -4,8 +4,8 @@ import android.app.Activity
 import android.content.Context
 import androidx.core.content.edit
 import com.google.android.play.core.review.ReviewManagerFactory
-import com.google.android.play.core.review.requestReview
-import com.google.android.play.core.review.launchReview
+import com.google.android.play.core.ktx.requestReview
+import com.google.android.play.core.ktx.launchReview
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
