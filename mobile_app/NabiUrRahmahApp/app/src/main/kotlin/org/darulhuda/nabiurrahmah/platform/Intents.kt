@@ -10,7 +10,7 @@ import androidx.core.net.toUri
 import org.darulhuda.nabiurrahmah.R
 
 /** Play Store listing of the released app (debug builds use a suffixed id). */
-const val PLAY_STORE_APP_ID = "org.darulhuda.udupi"
+const val PLAY_STORE_APP_ID = "org.darulhuda.nabiurrahmah"
 const val PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=$PLAY_STORE_APP_ID"
 
 private fun Context.tryStart(intent: Intent): Boolean =

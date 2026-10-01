@@ -27,12 +27,12 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        // Kept from the published app so existing installs keep updating.
-        applicationId = "org.darulhuda.udupi"
+        // The Play Store identity: permanent once published.
+        applicationId = "org.darulhuda.nabiurrahmah"
         minSdk = 24
         targetSdk = 36
-        versionCode = 4
-        versionName = "2.0.0"
+        versionCode = 1
+        versionName = "1.0.0"
 
         buildConfigField("String", "SITE_URL", "\"$siteUrl\"")
         buildConfigField("String", "PUBLISHED_CATALOG_URL", "\"${publishedBase}catalog.json\"")

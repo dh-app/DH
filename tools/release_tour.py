@@ -7,7 +7,7 @@ crashes or a screen never appears. Run by .github/workflows/release.yml.
 import os, re, subprocess, sys, time
 import xml.etree.ElementTree as ET
 
-PACKAGE = os.environ.get("APP_ID", "org.darulhuda.udupi")
+PACKAGE = os.environ.get("APP_ID", "org.darulhuda.nabiurrahmah")
 OUT = sys.argv[1] if len(sys.argv) > 1 else "screenshots"
 os.makedirs(OUT, exist_ok=True)
 problems = []
