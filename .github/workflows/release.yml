@@ -27,6 +27,9 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   release:
     name: Build, test on a phone and screenshot
@@ -111,6 +114,20 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: tools/release_smoke.sh "$(ls mobile_app/NabiUrRahmahApp/app/build/outputs/apk/release/*.apk | head -1)" store-screenshots
+
+      - name: Keep the screenshots in the repository (store/screenshots)
+        if: success()
+        run: |
+          mkdir -p store/screenshots
+          rm -f store/screenshots/*.png
+          cp store-screenshots/*.png store/screenshots/
+          git config user.name "Nabi ur Rahmah release"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add store/screenshots
+          if git diff --cached --quiet; then echo "Screenshots unchanged."; exit 0; fi
+          git commit -q -m "Update store screenshots"
+          git pull -q --rebase
+          git push -q
 
       - name: Upload screenshots
         if: always()
