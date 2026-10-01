@@ -1,0 +1,121 @@
+name: Release
+
+# Builds the app exactly as the Play Store receives it (shrunk, optimised,
+# signed), installs it on an emulator, walks through every section and takes
+# the store screenshots. Run it from the Actions tab before each release.
+#
+# Signing: add these repository secrets (Settings → Secrets and variables → Actions):
+#   UPLOAD_KEYSTORE_BASE64   the upload keystore (.jks), base64-encoded
+#   UPLOAD_KEYSTORE_PASSWORD
+#   UPLOAD_KEY_ALIAS
+#   UPLOAD_KEY_PASSWORD
+# Without them the build is signed with a throwaway key: fine for testing on a
+# phone, but not accepted by the Play Store.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, "claude/**"]
+    paths:
+      - "mobile_app/NabiUrRahmahApp/app/**"
+      - "mobile_app/NabiUrRahmahApp/gradle/**"
+      - "mobile_app/NabiUrRahmahApp/*.kts"
+      - "mobile_app/NabiUrRahmahApp/gradle.properties"
+      - "tools/release_*"
+      - ".github/workflows/release.yml"
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    name: Build, test on a phone and screenshot
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      LC_ALL: C.UTF-8
+      LANG: C.UTF-8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.UPLOAD_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.UPLOAD_KEY_PASSWORD }}
+        run: |
+          key="$RUNNER_TEMP/upload.jks"
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 --decode > "$key"
+            echo "NUR_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "NUR_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+            echo "NUR_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+            echo "SIGNED_FOR_PLAY=true" >> "$GITHUB_ENV"
+            echo "Signed with the upload key: ready for the Play Store." >> "$GITHUB_STEP_SUMMARY"
+          else
+            password="$(openssl rand -hex 16)"
+            keytool -genkeypair -keystore "$key" -storepass "$password" -keypass "$password" \
+              -alias test -keyalg RSA -keysize 2048 -validity 365 -dname "CN=Test build" -noprompt
+            echo "::add-mask::$password"
+            echo "NUR_KEYSTORE_PASSWORD=$password" >> "$GITHUB_ENV"
+            echo "NUR_KEY_ALIAS=test" >> "$GITHUB_ENV"
+            echo "NUR_KEY_PASSWORD=$password" >> "$GITHUB_ENV"
+            echo "SIGNED_FOR_PLAY=false" >> "$GITHUB_ENV"
+            echo "**Test signature only.** Add the upload-key secrets to get a build the Play Store accepts." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "NUR_KEYSTORE_FILE=$key" >> "$GITHUB_ENV"
+
+      - name: Build release
+        working-directory: mobile_app/NabiUrRahmahApp
+        run: ./gradlew bundleRelease assembleRelease
+
+      - name: Upload Play Store bundle
+        if: env.SIGNED_FOR_PLAY == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: play-store-bundle
+          path: |
+            mobile_app/NabiUrRahmahApp/app/build/outputs/bundle/release/*.aab
+            mobile_app/NabiUrRahmahApp/app/build/outputs/mapping/release/mapping.txt
+          if-no-files-found: error
+
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk-${{ env.SIGNED_FOR_PLAY == 'true' && 'play-signed' || 'test-signed' }}
+          path: mobile_app/NabiUrRahmahApp/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
+      - name: Enable the emulator's hardware acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Walk through the release build on a phone
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          # 1440 × 2880: the 2:1 shape the Play Store accepts for phone screenshots.
+          profile: pixel_2_xl
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: tools/release_smoke.sh "$(ls mobile_app/NabiUrRahmahApp/app/build/outputs/apk/release/*.apk | head -1)" store-screenshots
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: store-screenshots
+          path: store-screenshots/
+          if-no-files-found: ignore

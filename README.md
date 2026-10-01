@@ -15,6 +15,7 @@ DH/
 │   ├── books-on-prophet/
 │   ├── flyers/                   flyers: copied from the website, or uploaded per language
 │   └── catalog.json              flyers and videos for the app, rebuilt nightly
+├── store/                        Play Store listing, graphics, privacy policy, publishing guide
 ├── archive/                      earlier uploads, kept for reference; not used by the app
 └── .github/workflows/            CI: tests, lint, debug APK; the nightly flyer and video catalogue
 ```

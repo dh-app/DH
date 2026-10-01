@@ -166,6 +166,22 @@ class NabiSiteParserTest {
     }
 
     @Test
+    fun `page titles repeated in alt text and pdf page names are not flyer titles`() {
+        val site = "Nabi ur Rahmah Project - ( Prophet of Mercy Project ) - Darul Huda"
+        val flyers = parser.parseFlyers(
+            page(
+                """<img src="$uploads/a.jpg" alt="$site" width="600" height="848">
+                   <img src="$uploads/b.jpg" alt="$site" width="600" height="848">
+                   <img src="$uploads/c.jpg" alt="Nabi ur Rahma in Gujraathi language_compressed_page-0001" width="600" height="848">
+                   <img src="$uploads/d.jpg" alt="Mercy to the Worlds" width="600" height="848">""",
+            ),
+            indexUrl,
+        )
+
+        assertEquals(listOf(null, null, null, "Mercy to the Worlds"), flyers.map { it.title })
+    }
+
+    @Test
     fun `a page without language structure still shows its flyers`() {
         val index = parser.parseIndex(page("""<img src="$uploads/a.jpg" width="600" height="848">"""), indexUrl)
 

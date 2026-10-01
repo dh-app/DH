@@ -133,7 +133,10 @@ class NabiSiteParser {
                 else -> false
             }
         }
-        return flyers.values.filter { it.id !in decorationKeys }
+        val kept = flyers.values.filter { it.id !in decorationKeys }
+        // A caption repeated across flyers (often the page's own title in every alt text) names none of them.
+        val repeated = kept.mapNotNull { it.title }.groupingBy { it }.eachCount().filterValues { it > 1 }.keys
+        return kept.map { if (it.title in repeated) it.copy(title = null) else it }
     }
 
     // region Page structure
@@ -358,6 +361,8 @@ class NabiSiteParser {
             Regex("(?i)^(img|dsc|pxl|screenshot|whatsapp image|scan)[ _-]?\\d"),
             Regex("(?i)\\.(jpe?g|png|webp|pdf)$"),
             Regex("^\\d[\\d _-]+$"),
+            // Pages exported from a PDF: "Nabi ur Rahma in Gujarati_compressed_page-0001".
+            Regex("(?i)_(compressed|page)|[_-]page[ _-]?\\d{2,}|\\bpage[ _-]\\d{3,}"),
         )
 
         private const val NOISE =

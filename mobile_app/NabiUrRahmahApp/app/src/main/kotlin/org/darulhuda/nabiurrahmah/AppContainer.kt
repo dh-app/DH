@@ -27,12 +27,15 @@ import org.darulhuda.nabiurrahmah.platform.FlyerFiles
 import org.darulhuda.nabiurrahmah.platform.GallerySaver
 import org.darulhuda.nabiurrahmah.platform.PdfDocuments
 import org.darulhuda.nabiurrahmah.platform.Preferences
+import org.darulhuda.nabiurrahmah.platform.ReviewPrompt
 import org.darulhuda.nabiurrahmah.platform.SalawatPlayer
 
 /** Creates and holds the app's long-lived objects. */
 class AppContainer(context: Context, private val appScope: CoroutineScope) {
 
     private val appContext = context.applicationContext
+
+    val reviewPrompt: ReviewPrompt by lazy { ReviewPrompt(appContext) }
 
     val okHttpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()

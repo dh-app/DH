@@ -126,6 +126,7 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.telephoto.zoomable.image.coil)
     implementation(libs.youtube.player)
+    implementation(libs.play.review)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

@@ -26,7 +26,10 @@ class MainActivity : ComponentActivity() {
         // A fresh start opens with the Durood (and the salawat, if enabled);
         // rotating or returning from the background does not repeat it.
         val freshStart = savedInstanceState == null
-        if (freshStart) container.salawatPlayer.playOnce()
+        if (freshStart) {
+            container.salawatPlayer.playOnce()
+            container.reviewPrompt.onAppOpened()
+        }
 
         addOnPictureInPictureModeChangedListener { info -> pictureInPicture.active = info.isInPictureInPictureMode }
 
@@ -51,7 +54,7 @@ class MainActivity : ComponentActivity() {
         super.onUserLeaveHint()
         if (pictureInPicture.wanted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !isInPictureInPictureMode) {
             try {
-                enterPictureInPictureMode(PictureInPictureParams.Builder().setAspectRatio(Rational(16, 9)).build())
+                enterPictureInPictureMode(PictureInPictureParams.Builder().setAspectRatio(if (pictureInPicture.portrait) Rational(9, 16) else Rational(16, 9)).build())
             } catch (e: IllegalStateException) {
                 // Picture-in-picture is turned off for this app in system settings.
             }

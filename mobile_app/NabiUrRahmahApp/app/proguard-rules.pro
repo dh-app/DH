@@ -8,3 +8,9 @@
 # jsoup: optional regex engine and annotations it can use but we don't ship.
 -dontwarn com.google.re2j.**
 -dontwarn org.jspecify.annotations.**
+
+# The YouTube player talks to its WebView through @JavascriptInterface methods;
+# keep them so the shrinker can't remove or rename what the page calls.
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
