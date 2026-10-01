@@ -17,8 +17,7 @@ Phone screenshots and the files to upload come from the **Release** workflow (be
 
 Google Play only accepts an app signed with your **upload key**. Google then re-signs it with the app's own key ("Play App Signing").
 
-- **Updating the existing app `org.darulhuda.udupi`?** Use the upload key of the earlier release: a `.jks` or `.keystore` file and its passwords. If it is lost, open the app in Play Console → **Test and release → App integrity → Upload key** and choose **Request upload key reset**. Google switches you to a new key, usually within 2 days.
-- **Publishing it as a new app?** Create a new upload key.
+The app is new to the Play Store (`org.darulhuda.nabiurrahmah`), so it uses a newly created upload key. Keep the key file and its passwords safe and private. If they are ever lost, Play Console → **Test and release → App integrity → Upload key → Request upload key reset** replaces the key, usually within 2 days.
 
 Then add it to GitHub once, under **Settings → Secrets and variables → Actions → New repository secret**:
 

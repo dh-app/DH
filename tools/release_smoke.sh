@@ -2,7 +2,7 @@
 # Installs the release APK on the running emulator, walks through it and
 # shakes it with random taps. Fails on any crash. Used by release.yml.
 set -euo pipefail
-APK="$1"; OUT="$2"; APP_ID="${APP_ID:-org.darulhuda.udupi}"
+APK="$1"; OUT="$2"; APP_ID="${APP_ID:-org.darulhuda.nabiurrahmah}"
 
 adb wait-for-device
 # A clean status bar for the store screenshots.

@@ -122,9 +122,9 @@ keyAlias=…
 keyPassword=…
 ```
 
-Then run `./gradlew bundleRelease`. The application id stays `org.darulhuda.udupi`, so the
-Play Store listing keeps updating the existing app. Raise `versionCode` in
-`app/build.gradle.kts` for every release.
+Then run `./gradlew bundleRelease`. The application id is `org.darulhuda.nabiurrahmah`; it can
+never change once the app is on the Play Store. Raise `versionCode` in `app/build.gradle.kts`
+for every release.
 
 ### Books: adding PDFs without touching code
 
