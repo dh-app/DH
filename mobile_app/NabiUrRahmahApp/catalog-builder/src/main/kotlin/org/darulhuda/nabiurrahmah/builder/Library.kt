@@ -45,7 +45,8 @@ fun readUploadedFlyers(layout: LibraryLayout): List<Language> {
         val code = known?.code ?: LanguageNames.fromScript(folder.name) ?: return@mapNotNull null.also {
             println("  ! skipped folder '${folder.name}': not a recognised language name")
         }
-        val files = folder.listFiles { f -> f.isFile && f.extension.lowercase() in FLYER_EXTENSIONS }.orEmpty().sortedBy { it.name.lowercase() }
+        val files = folder.listFiles { f -> f.isFile && f.extension.lowercase() in FLYER_EXTENSIONS }.orEmpty()
+            .sortedWith(compareBy<File> { Regex("\\d+").find(it.nameWithoutExtension)?.value?.take(12)?.toLongOrNull() ?: Long.MAX_VALUE }.thenBy { it.name.lowercase() })
         val derived = File(layout.derived, folder.name)
         val flyers = files.flatMap { file ->
             if (file.extension.equals("pdf", ignoreCase = true)) {
@@ -108,6 +109,24 @@ fun publish(layout: LibraryLayout, file: File, derivedDir: File, title: String?,
 internal fun titleFrom(fileName: String): String? {
     val (title, _) = GitHubReleaseSource.describe(fileName)
     return title.takeUnless { CAMERA_NAMES.containsMatchIn(it) || it.length < 3 }
+}
+
+/**
+ * Flyers in their series order (1, 2, 3 … 97), read from the number in each file
+ * name: `Nabi-ur-Rahma-Urdu_page-0001.jpg` is 1. The website's own order is kept
+ * when most names carry no number; flyers without one go last.
+ */
+fun inSeriesOrder(flyers: List<Flyer>): List<Flyer> {
+    val numbers = flyers.map { seriesNumber(it.image) }
+    if (numbers.count { it != null } < flyers.size * 0.8) return flyers
+    return flyers.zip(numbers).sortedWith(compareBy(nullsLast()) { it.second }).map { it.first }
+}
+
+private fun seriesNumber(url: String): Long? {
+    val stem = url.substringBefore('?').substringAfterLast('/').substringBeforeLast('.')
+        .replace(Regex("-\\d{2,5}x\\d{2,5}$"), "")
+        .removeSuffix("-scaled")
+    return Regex("\\d+").findAll(stem).lastOrNull()?.value?.take(12)?.toLongOrNull()
 }
 
 /** Website languages first, in the site's order; uploads join their language or add a new one. */

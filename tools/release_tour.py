@@ -103,9 +103,14 @@ def go_home():
 print("Launching", PACKAGE)
 adb("logcat", "-c")
 adb("shell", "monkey", "-p", PACKAGE, "-c", "android.intent.category.LAUNCHER", "1")
-time.sleep(2.5)
+# The Durood shows for a few seconds after the system splash: catch it as soon as its Arabic text is up.
+arabic = re.compile("[\u0600-\u06FF]{3,}")
+deadline = time.time() + 10
+while time.time() < deadline and not any(arabic.search(n[0]) for n in screen()):
+    time.sleep(0.3)
+time.sleep(0.8)  # let the meaning fade in beneath it
 shot("01-opening-durood")
-time.sleep(7)
+time.sleep(6)
 shot("02-home")
 
 print("Flyers")
@@ -121,7 +126,7 @@ print("Videos")
 go_home()
 if tap_text(r"Videos in multiple languages", wait=6):
     shot("06-videos")
-    if tap_text(r"Series", wait=10):
+    if tap_text(r"Hadith Series - ", wait=12):
         shot("07-video")
         back(2)
 

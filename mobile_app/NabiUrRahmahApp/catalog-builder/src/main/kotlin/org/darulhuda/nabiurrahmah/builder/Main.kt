@@ -84,7 +84,7 @@ fun main(args: Array<String>) = runBlocking<Unit>(Dispatchers.Default) {
 
     // 2. Copy the website's flyers into the repository.
     val websiteLanguages: List<Language> = if (website != null) {
-        mirror(website.languages, layout, client).also { mirrored ->
+        mirror(website.languages.map { it.copy(flyers = inSeriesOrder(it.flyers)) }, layout, client).also { mirrored ->
             layout.websiteManifest.parentFile.mkdirs()
             layout.websiteManifest.writeText(json.encodeToString(Catalog.serializer(), Catalog(languages = mirrored)))
         }

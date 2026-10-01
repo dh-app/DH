@@ -181,31 +181,34 @@ private fun BookCardItem(card: BookCard, onClick: () -> Unit, modifier: Modifier
             seed = card.book.id,
             modifier = Modifier.fillMaxWidth(),
         )
-        Spacer(Modifier.height(10.dp))
-        Text(
-            text = edition.title,
-            style = MaterialTheme.typography.titleSmall,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        val languages = card.book.languages.size
-        Text(
-            text = if (languages > 1) {
-                pluralStringResource(R.plurals.language_count, languages, languages)
-            } else {
-                LanguageNames.native(edition.language)
-            },
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        card.book.source?.let { source ->
+        // Inset, so the card's rounded corners never cut into the first letters.
+        Column(Modifier.padding(horizontal = 4.dp).padding(bottom = 6.dp)) {
+            Spacer(Modifier.height(10.dp))
             Text(
-                text = stringResource(R.string.book_source, source.name),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
+                text = edition.title,
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
+            val languages = card.book.languages.size
+            Text(
+                text = if (languages > 1) {
+                    pluralStringResource(R.plurals.language_count, languages, languages)
+                } else {
+                    LanguageNames.native(edition.language)
+                },
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            card.book.source?.let { source ->
+                Text(
+                    text = stringResource(R.string.book_source, source.name),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }

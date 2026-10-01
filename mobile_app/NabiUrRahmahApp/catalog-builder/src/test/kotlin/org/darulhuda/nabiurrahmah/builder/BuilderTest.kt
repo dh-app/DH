@@ -104,6 +104,17 @@ class BuilderTest {
     }
 
     @Test
+    fun `flyers follow their series number, not the website's order`() {
+        val base = "https://darulhudaudupi.org/wp-content/uploads/2024/10/Nabi-ur-Rahma-Urdu_page-"
+        val site = listOf("0001-scaled.jpg", "0002.jpg", "0097.jpg", "0096-724x1024.jpg", "0010.jpg").map { Flyer(it, base + it) }
+
+        assertEquals(listOf("0001-scaled.jpg", "0002.jpg", "0010.jpg", "0096-724x1024.jpg", "0097.jpg"), inSeriesOrder(site).map { it.id })
+
+        val unnumbered = listOf(Flyer("b", "https://x.org/mercy.jpg"), Flyer("a", "https://x.org/kindness.jpg"), Flyer("c", "https://x.org/3.jpg"))
+        assertEquals(listOf("b", "a", "c"), inSeriesOrder(unnumbered).map { it.id })
+    }
+
+    @Test
     fun `camera file names don't become titles`() {
         assertNull(titleFrom("IMG_2031.jpg"))
         assertNull(titleFrom("WhatsApp Image 2024-01-01.jpeg"))
