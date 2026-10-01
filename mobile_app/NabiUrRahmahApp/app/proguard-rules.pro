@@ -14,3 +14,7 @@
 -keepclassmembers class * {
     @android.webkit.JavascriptInterface <methods>;
 }
+
+# The Play review library refers to a Play services annotation that is only a
+# compile-time marker; the app doesn't ship Play services.
+-dontwarn com.google.android.gms.common.annotation.**
