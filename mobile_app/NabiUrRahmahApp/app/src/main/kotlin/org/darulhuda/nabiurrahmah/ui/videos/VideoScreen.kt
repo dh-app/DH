@@ -39,6 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -91,6 +92,8 @@ fun VideoScreen(
         pictureInPicture.wanted = true
         onDispose { pictureInPicture.wanted = false }
     }
+    val portrait = current?.isShort == true
+    SideEffect { pictureInPicture.portrait = portrait }
     val compact = pictureInPicture.active
 
     Box(Modifier.fillMaxSize()) {
@@ -135,7 +138,7 @@ fun VideoScreen(
         }
 
         fullscreen?.let { session ->
-            FullscreenVideo(session, Modifier.zIndex(1f))
+            FullscreenVideo(session, portrait = portrait, modifier = Modifier.zIndex(1f))
         }
     }
 }
@@ -252,13 +255,14 @@ private fun EmbedBlocked(onWatch: () -> Unit) {
     }
 }
 
-/** Landscape, edge to edge, system bars hidden; back leaves full screen first. */
+/** Edge to edge with system bars hidden: landscape for wide videos, upright for Shorts. Back leaves full screen first. */
 @Composable
-private fun FullscreenVideo(session: FullscreenSession, modifier: Modifier = Modifier) {
+private fun FullscreenVideo(session: FullscreenSession, portrait: Boolean, modifier: Modifier = Modifier) {
     val activity = LocalActivity.current
-    DisposableEffect(activity) {
+    DisposableEffect(activity, portrait) {
         val previous = activity?.requestedOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        activity?.requestedOrientation =
+            if (portrait) ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT else ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         onDispose { activity?.requestedOrientation = previous }
     }
     ImmersiveSystemBars(barsVisible = false)

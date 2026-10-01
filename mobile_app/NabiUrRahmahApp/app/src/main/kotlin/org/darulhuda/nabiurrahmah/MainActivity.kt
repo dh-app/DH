@@ -54,7 +54,7 @@ class MainActivity : ComponentActivity() {
         super.onUserLeaveHint()
         if (pictureInPicture.wanted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !isInPictureInPictureMode) {
             try {
-                enterPictureInPictureMode(PictureInPictureParams.Builder().setAspectRatio(Rational(16, 9)).build())
+                enterPictureInPictureMode(PictureInPictureParams.Builder().setAspectRatio(if (pictureInPicture.portrait) Rational(9, 16) else Rational(16, 9)).build())
             } catch (e: IllegalStateException) {
                 // Picture-in-picture is turned off for this app in system settings.
             }

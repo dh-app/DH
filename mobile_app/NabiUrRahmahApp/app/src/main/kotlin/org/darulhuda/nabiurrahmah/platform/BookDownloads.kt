@@ -111,9 +111,24 @@ class BookDownloads(
                 }
             }
         }
+        // Never keep a half or wrong file as a "downloaded" book: it would fail to open every time.
+        if (total != null && read != total) {
+            partial.delete()
+            throw IOException("Download of $url stopped at $read of $total bytes")
+        }
+        if (!partial.isPdf()) {
+            partial.delete()
+            throw IOException("$url is not a PDF")
+        }
         if (!partial.renameTo(target)) throw IOException("Could not store $target")
         active.update { it + (url to DownloadStatus.Downloaded(target)) }
         return target
+    }
+
+    private fun File.isPdf(): Boolean = inputStream().use { input ->
+        val head = ByteArray(1024)
+        val count = input.read(head).coerceAtLeast(0)
+        String(head, 0, count, Charsets.ISO_8859_1).contains("%PDF-")
     }
 
     private fun sha1(text: String): String =

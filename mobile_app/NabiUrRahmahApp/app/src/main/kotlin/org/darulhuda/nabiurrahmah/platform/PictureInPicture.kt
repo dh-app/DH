@@ -11,6 +11,9 @@ class PictureInPictureState {
     var wanted by mutableStateOf(false)
 
     var active by mutableStateOf(false)
+
+    /** Shorts are upright, so their floating window is too. */
+    var portrait by mutableStateOf(false)
 }
 
 val LocalPictureInPicture = staticCompositionLocalOf { PictureInPictureState() }
