@@ -1,6 +1,9 @@
 package org.darulhuda.nabiurrahmah.ui.library
 
+import android.Manifest
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -122,6 +125,18 @@ fun ReaderScreen(
     val ready = state as? ReaderUiState.Ready
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = ready?.initialPage ?: 0)
     val scope = rememberCoroutineScope()
+    // Android 9 and older ask for storage access before saving to Downloads.
+    val permissionDenied = stringResource(R.string.message_permission_needed)
+    val requestPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) viewModel.saveToDevice() else scope.launch { snackbarHostState.showSnackbar(permissionDenied) }
+    }
+    val onSave = {
+        if (viewModel.needsStoragePermission) {
+            requestPermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        } else {
+            viewModel.saveToDevice()
+        }
+    }
 
     Box(Modifier.fillMaxSize()) {
         Scaffold(
@@ -149,7 +164,7 @@ fun ReaderScreen(
                                     contentDescription = stringResource(R.string.action_night_mode),
                                 )
                             }
-                            IconButton(onClick = viewModel::saveToDevice) {
+                            IconButton(onClick = onSave) {
                                 Icon(Icons.Outlined.Download, contentDescription = stringResource(R.string.action_save))
                             }
                             IconButton(onClick = { viewModel.share(shareText, toWhatsApp = false) }) {

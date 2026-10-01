@@ -233,6 +233,8 @@ class ReaderViewModel(
 
     fun onPageShown(page: Int) = preferences.saveLastPage(route.url, page)
 
+    val needsStoragePermission: Boolean get() = saver.needsPermission
+
     fun share(text: String, toWhatsApp: Boolean) = withFile { file ->
         _events.send(LibraryEvent.Share(downloads.shareable(file, title), text, toWhatsApp))
     }
