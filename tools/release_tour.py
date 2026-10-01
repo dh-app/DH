@@ -43,13 +43,18 @@ def tap_text(pattern, wait=4.0, timeout=20.0, index=0):
     """Taps the [index]th element whose text or description matches [pattern]."""
     regex = re.compile(pattern, re.I)
     deadline = time.time() + timeout
+    scrolls = 0
     while time.time() < deadline:
         matches = [n for n in screen() if regex.search(n[0]) or regex.search(n[1])]
         if len(matches) > index:
             adb("shell", "input", "tap", *map(str, centre(matches[index][2])))
             time.sleep(wait)
             return True
-        time.sleep(2)
+        if scrolls < 3:  # it may be further down the screen
+            scroll_down()
+            scrolls += 1
+        else:
+            time.sleep(2)
     problems.append(f"never found on screen: {pattern!r}")
     print(f"  ! never found: {pattern!r}")
     return False
@@ -60,6 +65,13 @@ def tap_fraction(fx, fy, wait=4.0):
     w, h = (int(size.group(1)), int(size.group(2))) if size else (1440, 2880)
     adb("shell", "input", "tap", str(int(w * fx)), str(int(h * fy)))
     time.sleep(wait)
+
+
+def scroll_down():
+    size = re.search(r"(\d+)x(\d+)", adb("shell", "wm", "size"))
+    w, h = (int(size.group(1)), int(size.group(2))) if size else (1440, 2880)
+    adb("shell", "input", "swipe", str(w // 2), str(int(h * 0.75)), str(w // 2), str(int(h * 0.35)), "400")
+    time.sleep(1.5)
 
 
 def shot(name):
