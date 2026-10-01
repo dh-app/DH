@@ -115,8 +115,9 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: tools/release_smoke.sh "$(ls mobile_app/NabiUrRahmahApp/app/build/outputs/apk/release/*.apk | head -1)" store-screenshots
 
+      # Only from main: committing them on other branches too makes every pull request conflict.
       - name: Keep the screenshots in the repository (store/screenshots)
-        if: success()
+        if: success() && github.ref == 'refs/heads/main'
         run: |
           mkdir -p store/screenshots
           rm -f store/screenshots/*.png
