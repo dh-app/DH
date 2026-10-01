@@ -157,7 +157,8 @@ internal fun LanguageCard(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = language.name,
+                // "English" over "English" says nothing; keep the line so cards stay the same height.
+                text = language.name.takeUnless { it.equals(language.nativeName, ignoreCase = true) } ?: " ",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,

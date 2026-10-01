@@ -2,7 +2,7 @@
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import math, sys
 FONTS='mobile_app/NabiUrRahmahApp/app/src/main/res/font/'
-logo=Image.open('store/emblem-640.png').convert('RGBA')
+logo=Image.open('store/brand/nabi-ur-rahmah-emblem-637.png').convert('RGBA')
 
 icon=Image.new('RGBA',(640,640),(255,255,255,255)); icon.alpha_composite(logo)
 icon.convert('RGB').resize((512,512),Image.LANCZOS).save('store/icon-512.png', optimize=True)
