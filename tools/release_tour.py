@@ -57,6 +57,10 @@ def tap_text(pattern, wait=4.0, timeout=20.0, index=0):
             time.sleep(2)
     problems.append(f"never found on screen: {pattern!r}")
     print(f"  ! never found: {pattern!r}")
+    visible = [n[0] or n[1] for n in screen() if (n[0] or n[1])]
+    print("    on screen:", visible[:25] or "(nothing readable)")
+    print("    focus:", adb("shell", "dumpsys", "window", "displays").count("mCurrentFocus"),
+          [l.strip() for l in adb("shell", "dumpsys", "window").splitlines() if "mCurrentFocus" in l][:1])
     return False
 
 
