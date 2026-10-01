@@ -15,6 +15,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import org.darulhuda.nabiurrahmah.platform.ReviewPrompt
+import org.darulhuda.nabiurrahmah.NabiApp
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.NavController
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.DisposableEffect
+import androidx.activity.compose.LocalActivity
 import androidx.lifecycle.compose.dropUnlessResumed
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -43,6 +53,7 @@ fun NurNavHost(showLanding: Boolean, modifier: Modifier = Modifier) {
     // so a quick double tap never pushes a screen twice or pops too far.
     val navigateUp = dropUnlessResumed { navController.navigateUp() }
     var landing by rememberSaveable { mutableStateOf(showLanding) }
+    ReviewWhenReturningHome(navController)
 
     Box(modifier.fillMaxSize()) {
         NavHost(
@@ -144,3 +155,37 @@ fun NurNavHost(showLanding: Boolean, modifier: Modifier = Modifier) {
         }
     }
 }
+
+/**
+ * Counts books, videos and flyers opened, and offers the Play rating sheet when
+ * the reader comes back to the home screen afterwards (see [ReviewPrompt]).
+ */
+@Composable
+private fun ReviewWhenReturningHome(navController: NavController) {
+    val activity = LocalActivity.current ?: return
+    val prompt = remember(activity) { (activity.application as NabiApp).container.reviewPrompt }
+    val scope = rememberCoroutineScope()
+    DisposableEffect(navController, prompt) {
+        var wasAway = false
+        val listener = NavController.OnDestinationChangedListener { _, destination, _ ->
+            when {
+                destination.hasRoute<ReaderRoute>() || destination.hasRoute<VideoRoute>() || destination.hasRoute<ViewerRoute>() -> {
+                    prompt.onEngaged()
+                    wasAway = true
+                }
+                destination.hasRoute<HomeRoute>() && wasAway -> {
+                    wasAway = false
+                    scope.launch {
+                        delay(REVIEW_DELAY_MILLIS) // let the home screen settle first
+                        prompt.askIfDue(activity)
+                    }
+                }
+            }
+        }
+        navController.addOnDestinationChangedListener(listener)
+        onDispose { navController.removeOnDestinationChangedListener(listener) }
+    }
+}
+
+private const val REVIEW_DELAY_MILLIS = 700L
+

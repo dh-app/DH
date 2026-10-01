@@ -26,7 +26,10 @@ class MainActivity : ComponentActivity() {
         // A fresh start opens with the Durood (and the salawat, if enabled);
         // rotating or returning from the background does not repeat it.
         val freshStart = savedInstanceState == null
-        if (freshStart) container.salawatPlayer.playOnce()
+        if (freshStart) {
+            container.salawatPlayer.playOnce()
+            container.reviewPrompt.onAppOpened()
+        }
 
         addOnPictureInPictureModeChangedListener { info -> pictureInPicture.active = info.isInPictureInPictureMode }
 
