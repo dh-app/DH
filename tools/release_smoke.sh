@@ -13,6 +13,7 @@ adb shell am broadcast -a com.android.systemui.demo -e command battery -e level 
 adb shell am broadcast -a com.android.systemui.demo -e command network -e wifi show -e level 4 >/dev/null
 adb shell am broadcast -a com.android.systemui.demo -e command notifications -e visible false >/dev/null
 
+python3 -m pip install --quiet --user pillow >/dev/null 2>&1 || true
 adb install -r "$APK"
 python3 tools/release_tour.py "$OUT"
 

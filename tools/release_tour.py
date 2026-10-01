@@ -103,13 +103,33 @@ def go_home():
 print("Launching", PACKAGE)
 adb("logcat", "-c")
 adb("shell", "monkey", "-p", PACKAGE, "-c", "android.intent.category.LAUNCHER", "1")
-# The Durood shows for a few seconds after the system splash: catch it as soon as its Arabic text is up.
-arabic = re.compile("[\u0600-\u06FF]{3,}")
-deadline = time.time() + 10
-while time.time() < deadline and not any(arabic.search(n[0]) for n in screen()):
-    time.sleep(0.3)
-time.sleep(0.8)  # let the meaning fade in beneath it
-shot("01-opening-durood")
+# The Durood shows for only a few seconds, faster than the screen can be read:
+# grab frames quickly and keep the last dark (maroon) one before the light home screen.
+frames = []
+for i in range(24):
+    frames.append(subprocess.run(["adb", "exec-out", "screencap", "-p"], capture_output=True).stdout)
+    time.sleep(0.15)
+best = frames[0]
+try:
+    from PIL import Image
+    import io
+
+    def brightness(png):
+        # The thin left margin: maroon on the opening screen, pale beside the home screen's cards.
+        im = Image.open(io.BytesIO(png)).convert("L")
+        w, h = im.size
+        strip = im.crop((0, int(h * 0.1), max(1, int(w * 0.015)), int(h * 0.9))).resize((1, 40))
+        return sum(strip.getdata()) / 40
+
+    dark = [f for f in frames if f and brightness(f) < 110]
+    if dark:
+        best = dark[-1]
+except Exception as e:  # Pillow missing or a frame unreadable: keep the first frame
+    print("  frame selection skipped:", e)
+with open(os.path.join(OUT, "01-opening-durood.png"), "wb") as f:
+    f.write(best)
+print("  saved 01-opening-durood.png")
+check_alive("opening")
 time.sleep(6)
 shot("02-home")
 
