@@ -7,6 +7,7 @@ import org.darulhuda.nabiurrahmah.data.library.GitHubReleaseSource
 import org.darulhuda.nabiurrahmah.data.library.LanguageNames
 import org.darulhuda.nabiurrahmah.data.model.Flyer
 import org.darulhuda.nabiurrahmah.data.model.Language
+import org.darulhuda.nabiurrahmah.data.site.KnownLanguage
 import org.darulhuda.nabiurrahmah.data.site.KnownLanguages
 import org.darulhuda.nabiurrahmah.data.site.NabiSiteParser
 
@@ -18,6 +19,8 @@ class LibraryLayout(val root: File, publicBase: String) {
     fun isPublished(url: String): Boolean = url.startsWith(base.toString())
 
     val flyers = File(root, "flyers")
+    /** A second upload folder, for new and updated flyers. */
+    val updatedFlyers = File(root, "Flyers_Updated")
     val mirror = File(flyers, "_from-website")
     val derived = File(flyers, "_generated")
     val catalog = File(root, "catalog.json")
@@ -34,35 +37,62 @@ private val FLYER_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "pdf")
 private val CAMERA_NAMES = Regex("(?i)^(img|dsc|pxl|scan|screenshot|whatsapp image|\\d)")
 
 /**
- * Flyers uploaded straight to GitHub: `library/flyers/<Language>/<file>`, the
- * folder named in English or the language's own script ("Hindi", "اردو").
+ * Flyers uploaded straight to GitHub, in `library/flyers/` or `library/Flyers_Updated/`:
+ * one folder per language, named in English or the language's own script ("Hindi",
+ * "اردو"). A file placed directly in one of those folders counts too when its name
+ * mentions the language ("Urdu flyers.pdf").
  */
 fun readUploadedFlyers(layout: LibraryLayout): List<Language> {
-    val folders = layout.flyers.listFiles { f -> f.isDirectory && !f.name.startsWith("_") && !f.name.startsWith(".") }
-        .orEmpty().sortedBy { it.name.lowercase() }
-    return folders.mapNotNull { folder ->
-        val known = KnownLanguages.match(folder.name, maxWords = 4) ?: KnownLanguages.mentionedIn(folder.name)
-        val code = known?.code ?: LanguageNames.fromScript(folder.name) ?: return@mapNotNull null.also {
-            println("  ! skipped folder '${folder.name}': not a recognised language name")
-        }
-        val files = folder.listFiles { f -> f.isFile && f.extension.lowercase() in FLYER_EXTENSIONS }.orEmpty()
-            .sortedWith(compareBy<File> { Regex("\\d+").find(it.nameWithoutExtension)?.value?.take(12)?.toLongOrNull() ?: Long.MAX_VALUE }.thenBy { it.name.lowercase() })
-        val derived = File(layout.derived, folder.name)
-        val flyers = files.flatMap { file ->
-            if (file.extension.equals("pdf", ignoreCase = true)) {
-                pdfFlyers(layout, file, derived)
-            } else {
-                listOf(publish(layout, file, derived, title = titleFrom(file.name)))
+    val byLanguage = LinkedHashMap<String, Pair<KnownLanguage?, MutableList<Flyer>>>()
+    fun add(code: String, known: KnownLanguage?, flyers: List<Flyer>) {
+        byLanguage.getOrPut(code) { known to mutableListOf() }.second += flyers
+    }
+    for (root in listOf(layout.flyers, layout.updatedFlyers)) {
+        val entries = root.listFiles { f -> !f.name.startsWith("_") && !f.name.startsWith(".") }.orEmpty().sortedBy { it.name.lowercase() }
+        val derivedRoot = if (root == layout.flyers) layout.derived else File(layout.derived, "_updated")
+        for (folder in entries.filter { it.isDirectory }) {
+            val known = KnownLanguages.match(folder.name, maxWords = 4) ?: KnownLanguages.mentionedIn(folder.name)
+            val code = known?.code ?: LanguageNames.fromScript(folder.name)
+            if (code == null) {
+                println("  ! skipped folder '${folder.name}': not a recognised language name")
+                continue
             }
+            val files = folder.listFiles { f -> f.isFile && f.extension.lowercase() in FLYER_EXTENSIONS }.orEmpty().toList()
+            add(code, known, flyersFrom(layout, inNumberOrder(files), File(derivedRoot, folder.name)))
         }
+        for (file in inNumberOrder(entries.filter { it.isFile && it.extension.lowercase() in FLYER_EXTENSIONS })) {
+            val known = KnownLanguages.mentionedIn(file.nameWithoutExtension.replace('_', ' ').replace('-', ' '))
+            if (known == null) {
+                println("  ! skipped '${file.name}': put it in a language folder, or name the language in the file name")
+                continue
+            }
+            add(known.code, known, flyersFrom(layout, listOf(file), File(derivedRoot, "_loose")))
+        }
+    }
+    return byLanguage.map { (code, entry) ->
+        val (known, flyers) = entry
         Language(
             code = code,
             name = known?.name ?: LanguageNames.english(code),
             nativeName = known?.nativeName ?: LanguageNames.native(code),
             rtl = known?.rtl ?: LanguageNames.isRtl(code),
-            flyers = flyers,
+            flyers = flyers.distinctBy { it.id },
         )
     }.filter { it.flyers.isNotEmpty() }
+}
+
+private fun inNumberOrder(files: List<File>): List<File> =
+    files.sortedWith(
+        compareBy<File> { Regex("\\d+").find(it.nameWithoutExtension)?.value?.take(12)?.toLongOrNull() ?: Long.MAX_VALUE }
+            .thenBy { it.name.lowercase() },
+    )
+
+private fun flyersFrom(layout: LibraryLayout, files: List<File>, derived: File): List<Flyer> = files.flatMap { file ->
+    if (file.extension.equals("pdf", ignoreCase = true)) {
+        pdfFlyers(layout, file, derived)
+    } else {
+        listOf(publish(layout, file, derived, title = titleFrom(file.name)))
+    }
 }
 
 /**
