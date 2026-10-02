@@ -11,6 +11,7 @@ on:
     branches: [main, "claude/**"]
     paths:
       - "library/flyers/**"
+      - "library/Flyers_Updated/**"
       - "!library/flyers/_generated/**"
       - "!library/flyers/_from-website/**"
       - "mobile_app/NabiUrRahmahApp/catalog-builder/**"

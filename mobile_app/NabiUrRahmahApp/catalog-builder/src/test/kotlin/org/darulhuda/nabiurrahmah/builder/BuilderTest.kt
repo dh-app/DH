@@ -115,6 +115,22 @@ class BuilderTest {
     }
 
     @Test
+    fun `Flyers_Updated adds to the same languages, in folders or named files`() {
+        image(File(root, "flyers/Urdu/old 1.jpg"), 800, 1131)
+        image(File(root, "Flyers_Updated/Urdu/new 2.jpg"), 800, 1131)
+        image(File(root, "Flyers_Updated/Tamil flyer 1.jpg"), 800, 1131)
+        image(File(root, "Flyers_Updated/no language here.jpg"), 800, 1131)
+        File(root, "Flyers_Updated/README.md").writeText("How to upload")
+
+        val languages = readUploadedFlyers(layout)
+
+        assertEquals(listOf("ur", "ta"), languages.map { it.code })
+        assertEquals(2, languages[0].flyers.size)
+        assertTrue(languages[0].flyers.any { it.image.contains("/Flyers_Updated/Urdu/new%202.jpg") })
+        assertEquals(1, languages[1].flyers.size)
+    }
+
+    @Test
     fun `camera file names don't become titles`() {
         assertNull(titleFrom("IMG_2031.jpg"))
         assertNull(titleFrom("WhatsApp Image 2024-01-01.jpeg"))

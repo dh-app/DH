@@ -42,6 +42,9 @@ Ones the website can't serve yet are tried again on every run.
 
 ### Adding flyers
 
+The easiest place is [`Flyers_Updated/`](Flyers_Updated): see the instructions there.
+`flyers/<Language>/` works the same way.
+
 Create a folder named after the language, in English or its own script (`flyers/Hindi/`,
 `flyers/اردو/`), and upload images (JPG, PNG) or a **PDF**. Each page of a PDF becomes its own
 flyer, rendered at print quality, so one PDF per language is enough. Phones get them after the
