@@ -131,6 +131,37 @@ class BuilderTest {
     }
 
     @Test
+    fun `a language uploaded to Flyers_Updated replaces the website's copies`() {
+        image(File(root, "Flyers_Updated/Urdu/1.jpg"), 800, 1131)
+        image(File(root, "flyers/Hindi/1.jpg"), 800, 1131)
+        val uploaded = readUploadedFlyers(layout)
+        val website = listOf(
+            Language("ur", "Urdu", flyers = listOf(Flyer("site-ur", "https://darulhudaudupi.org/u.jpg"))),
+            Language("hi", "Hindi", flyers = listOf(Flyer("site-hi", "https://darulhudaudupi.org/h.jpg"))),
+        )
+
+        val merged = merge(withoutReplaced(website, uploaded, layout), uploaded)
+
+        assertEquals(listOf("ur", "hi"), merged.map { it.code })
+        assertEquals(1, merged[0].flyers.size)
+        assertTrue(merged[0].flyers.single().image.contains("Flyers_Updated"))
+        assertEquals(2, merged[1].flyers.size) // library/flyers/ adds; it doesn't replace
+    }
+
+    @Test
+    fun `the folder names in use are all recognised`() {
+        val names = listOf(
+            "Urdu", "Hindi", "english", "Arabic", "Telgu", "Bangla", "Gujrati", "Marathi", "Kannada", "Roman english",
+            "Malayalam", "Punjabi", "Odiya", "Tamil", "Assamese", "Italy", "French", "Germany", "Nepali", "Turkey", "Indonishiya",
+        )
+        val codes = names.map { name -> org.darulhuda.nabiurrahmah.data.site.KnownLanguages.match(name, maxWords = 4)?.code }
+        assertEquals(
+            listOf("ur", "hi", "en", "ar", "te", "bn", "gu", "mr", "kn", "ur-Latn", "ml", "pa", "or", "ta", "as", "it", "fr", "de", "ne", "tr", "id"),
+            codes,
+        )
+    }
+
+    @Test
     fun `camera file names don't become titles`() {
         assertNull(titleFrom("IMG_2031.jpg"))
         assertNull(titleFrom("WhatsApp Image 2024-01-01.jpeg"))
