@@ -142,7 +142,12 @@ internal fun LanguageCard(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = language.code.uppercase(),
+                    // "UR", "HI"…; a script variant such as ur-Latn shows its name's initials ("RU" for Roman Urdu).
+                    text = if ('-' in language.code) {
+                        language.name.split(' ').mapNotNull { it.firstOrNull()?.uppercaseChar() }.joinToString("").take(3)
+                    } else {
+                        language.code.uppercase()
+                    },
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )

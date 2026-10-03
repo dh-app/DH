@@ -113,7 +113,7 @@ fun main(args: Array<String>) = runBlocking<Unit>(Dispatchers.Default) {
             .append(if (waiting > 0) "; **$waiting waiting** for the website to come back (or for an upload)\n" else "\n")
     }
     val catalog = Catalog(
-        languages = merge(available, uploaded).filter { it.flyers.isNotEmpty() },
+        languages = merge(withoutReplaced(available, uploaded, layout), uploaded).filter { it.flyers.isNotEmpty() },
         playlists = playlists,
     )
     report.append("\n| Language | Flyers |\n|---|---|\n")

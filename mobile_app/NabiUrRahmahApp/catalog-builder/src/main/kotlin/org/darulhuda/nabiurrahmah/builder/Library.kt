@@ -159,6 +159,19 @@ private fun seriesNumber(url: String): Long? {
     return Regex("\\d+").findAll(stem).lastOrNull()?.value?.take(12)?.toLongOrNull()
 }
 
+/**
+ * A language uploaded to `Flyers_Updated` replaces the website's copies of that
+ * language, so flyers don't appear twice. Its place in the list is kept.
+ */
+fun withoutReplaced(website: List<Language>, uploaded: List<Language>, layout: LibraryLayout): List<Language> {
+    val updatedPrefix = layout.url(layout.updatedFlyers)
+    val generatedPrefix = layout.url(File(layout.derived, "_updated"))
+    val replaced = uploaded.filter { language ->
+        language.flyers.any { it.image.startsWith(updatedPrefix) || it.image.startsWith(generatedPrefix) }
+    }.map { it.code }.toSet()
+    return website.map { if (it.code in replaced) it.copy(flyers = emptyList()) else it }
+}
+
 /** Website languages first, in the site's order; uploads join their language or add a new one. */
 fun merge(website: List<Language>, uploaded: List<Language>): List<Language> {
     val byCode = LinkedHashMap<String, Language>()
