@@ -82,9 +82,19 @@ fun main(args: Array<String>) = runBlocking<Unit>(Dispatchers.Default) {
         }
     }
 
-    // 2. Copy the website's flyers into the repository.
+    // 2. Uploaded flyers: library/flyers, library/Flyers_Updated and the "flyers" release.
+    val repository = System.getenv("GITHUB_REPOSITORY")
+        ?: Regex("raw\\.githubusercontent\\.com/([^/]+/[^/]+)/").find(layout.url(layout.root))?.groupValues?.get(1)
+        ?: "dh-app/DH"
+    val uploaded = merge(readUploadedFlyers(layout), ReleaseFlyers(client, repository).read(layout, report))
+    report.append("- Uploaded flyers: ${uploaded.sumOf { it.flyers.size }} in ${uploaded.size} languages\n")
+    val replaced = replacedCodes(uploaded, layout)
+    // Languages uploaded as updated flyers no longer need the website's copies.
+    replaced.forEach { File(layout.mirror, it).deleteRecursively() }
+
+    // 3. Copy the website's flyers for the other languages into the repository.
     val websiteLanguages: List<Language> = if (website != null) {
-        mirror(website.languages.map { it.copy(flyers = inSeriesOrder(it.flyers)) }, layout, client).also { mirrored ->
+        mirror(website.languages.filter { it.code !in replaced }.map { it.copy(flyers = inSeriesOrder(it.flyers)) }, layout, client).also { mirrored ->
             layout.websiteManifest.parentFile.mkdirs()
             layout.websiteManifest.writeText(json.encodeToString(Catalog.serializer(), Catalog(languages = mirrored)))
         }
@@ -93,9 +103,6 @@ fun main(args: Array<String>) = runBlocking<Unit>(Dispatchers.Default) {
         layout.websiteManifest.takeIf { it.isFile }?.let { CatalogJson.decodeCatalog(it.readText()).languages }.orEmpty()
     }
 
-    // 3. Uploaded flyers.
-    val uploaded = readUploadedFlyers(layout)
-    report.append("- Uploaded flyers: ${uploaded.sumOf { it.flyers.size }} in ${uploaded.size} languages\n")
 
     // 4. Videos: keep yesterday's playlists if YouTube can't be read today.
     if (playlists.isEmpty()) {

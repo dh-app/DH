@@ -107,12 +107,17 @@ private fun pdfFlyers(layout: LibraryLayout, pdf: File, derivedDir: File): List<
         println("  ! could not read ${pdf.name}: ${e.message}")
         return listOf(publish(layout, pdf, derivedDir, title))
     }
-    val baseId = uploadId(pdf)
-    return pages.mapIndexed { index, page ->
-        val pageTitle = title?.let { if (pages.size > 1) "$it · ${index + 1}" else it }
-        publish(layout, page, derivedDir, pageTitle, id = "$baseId-p${index + 1}")
-    }
+    return pageFlyers(layout, pages, derivedDir, baseId = uploadId(pdf), title = title)
 }
+
+/**
+ * Flyers for rendered pages. A many-page PDF is a set of flyers, each with its
+ * own content, so its pages carry no title; a one-page PDF keeps its name.
+ */
+internal fun pageFlyers(layout: LibraryLayout, pages: List<File>, derivedDir: File, baseId: String, title: String?): List<Flyer> =
+    pages.mapIndexed { index, page ->
+        publish(layout, page, derivedDir, title.takeIf { pages.size == 1 }, id = "$baseId-p${index + 1}")
+    }
 
 private fun uploadId(file: File): String =
     "up-" + NabiSiteParser.canonicalKey(file.path).hashCode().toUInt().toString(36)
@@ -164,12 +169,17 @@ private fun seriesNumber(url: String): Long? {
  * language, so flyers don't appear twice. Its place in the list is kept.
  */
 fun withoutReplaced(website: List<Language>, uploaded: List<Language>, layout: LibraryLayout): List<Language> {
+    val replaced = replacedCodes(uploaded, layout)
+    return website.map { if (it.code in replaced) it.copy(flyers = emptyList()) else it }
+}
+
+/** Languages with flyers from `Flyers_Updated` or the flyers release. */
+fun replacedCodes(uploaded: List<Language>, layout: LibraryLayout): Set<String> {
     val updatedPrefix = layout.url(layout.updatedFlyers)
     val generatedPrefix = layout.url(File(layout.derived, "_updated"))
-    val replaced = uploaded.filter { language ->
+    return uploaded.filter { language ->
         language.flyers.any { it.image.startsWith(updatedPrefix) || it.image.startsWith(generatedPrefix) }
     }.map { it.code }.toSet()
-    return website.map { if (it.code in replaced) it.copy(flyers = emptyList()) else it }
 }
 
 /** Website languages first, in the site's order; uploads join their language or add a new one. */

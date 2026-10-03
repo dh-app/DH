@@ -17,8 +17,15 @@ import org.apache.pdfbox.rendering.PDFRenderer
 object PdfPages {
     const val DPI = 220f
 
-    fun render(pdf: File, outputDir: File): List<File> {
-        val prefix = "${pdf.nameWithoutExtension}-${fingerprint(pdf)}"
+    /** Sharp at 2400 px; a little more compression than photos need keeps 21 languages of pages light. */
+    private const val QUALITY = 0.85f
+
+    /** Pages already rendered under [prefix], in page order. */
+    fun existing(prefix: String, outputDir: File): List<File> =
+        outputDir.listFiles { f -> f.name.startsWith("$prefix-p") && f.name.endsWith(".jpg") && !f.name.endsWith("-thumb.jpg") }
+            .orEmpty().sortedBy { it.name }
+
+    fun render(pdf: File, outputDir: File, prefix: String = "${pdf.nameWithoutExtension}-${fingerprint(pdf)}"): List<File> {
         outputDir.mkdirs()
         return Loader.loadPDF(pdf).use { document ->
             val renderer = PDFRenderer(document)
@@ -28,7 +35,7 @@ object PdfPages {
                         val box = document.getPage(index).cropBox
                         val longestPoints = max(box.width, box.height).coerceAtLeast(1f)
                         val scale = min(DPI / 72f, Images.MAX_SIDE / longestPoints)
-                        Images.writeJpeg(renderer.renderImage(index, scale, ImageType.RGB), page, 0.9f)
+                        Images.writeJpeg(renderer.renderImage(index, scale, ImageType.RGB), page, QUALITY)
                     }
                 }
             }
