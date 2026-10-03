@@ -7,9 +7,6 @@ on:
   schedule:
     - cron: "23 1 * * *"   # daily, 06:53 in India
   workflow_dispatch:
-  # Large flyer files attached to the "flyers" release (Releases page).
-  release:
-    types: [published, edited]
   push:
     branches: [main, "claude/**"]
     paths:
@@ -39,9 +36,6 @@ jobs:
       LANG: C.UTF-8
     steps:
       - uses: actions/checkout@v4
-        with:
-          # A release event would check out the release's tag; the catalogue lives on main.
-          ref: ${{ github.event_name == 'release' && 'main' || '' }}
 
       - uses: actions/setup-java@v4
         with:
@@ -52,8 +46,6 @@ jobs:
 
       - name: Build catalogue
         working-directory: mobile_app/NabiUrRahmahApp
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
         run: ./gradlew :catalog-builder:run
 
       - name: Publish

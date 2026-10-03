@@ -93,7 +93,7 @@ class BuilderTest {
 
         assertEquals("kn", kannada.code)
         assertEquals(3, kannada.flyers.size)
-        assertEquals(listOf(null, null, null), kannada.flyers.map { it.title }) // each page is its own flyer
+        assertEquals(listOf("Nabi ur Rahmah · 1", "Nabi ur Rahmah · 2", "Nabi ur Rahmah · 3"), kannada.flyers.map { it.title })
         val first = kannada.flyers.first()
         assertNull(first.pdf)
         assertTrue(first.image, first.image.contains("/flyers/_generated/Kannada/"))
